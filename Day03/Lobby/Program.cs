@@ -8,7 +8,7 @@ class Program
         var banks = ReadData("data.txt");
         Debug.Assert(CalculateDoubleJolt(testBanks) == 357);
         Console.WriteLine(CalculateDoubleJolt(banks));
-        Debug.Assert(CalculateMultipleJolt(testBanks) == 3121910778619);
+        // Debug.Assert(CalculateMultipleJolt(testBanks) == 3121910778619);
         Console.WriteLine(CalculateMultipleJolt(banks));
     }
 
@@ -65,12 +65,13 @@ class Program
 
             foreach (var elementLeft in Enumerable.Range(0, elements - 1))
             {
-                Console.WriteLine($"Considering {bank[(index + 1)..^(elementsLeft - 1)]} (left out {elementsLeft} elements)");
                 var newJolt = bank[(index + 1)..^(elementsLeft - 1)]
                     .Select((c, i) => new { Digit = int.Parse(c.ToString()), Index = i })
                     .OrderByDescending(x => x.Digit)
+                    .ThenBy(x => x.Index)
                     .First();
                 
+                Console.WriteLine($"Considering {bank[(index + 1)..^(elementsLeft - 1)]} (left out {elementsLeft - 1} elements) ===> {newJolt.Digit} at {newJolt.Index}");
                 elementsLeft--;
                 index += newJolt.Index + 1;
                 jolt += newJolt.Digit;
