@@ -15,7 +15,7 @@ internal abstract class Program
 
     private static string[] ReadData(string fileName)
     {
-        return File.ReadAllLines($"../../../{fileName}");
+        return File.ReadAllLines(fileName);
     }
 
     private static int CalculateDoubleJolt(string[] banks)
