@@ -12,11 +12,11 @@ public class Program
         ReadData("data.txt", out ranges, out ingredients);
         Debug.Assert(CalculateFreshness(testRanges, testIngredients) == 3);
         Console.WriteLine(CalculateFreshness(ranges, ingredients));
-        // Debug.Assert(CalculateFreshnessPart2(testRanges, testIngredients) == 14);
-        Debug.Assert(CalculateFreshnessPart2(testRanges2, testIngredients2) == 23);
+        Debug.Assert(CalculateFreshnessPart2(testRanges, testIngredients) == 14);
+        Debug.Assert(CalculateFreshnessPart2(testRanges2, testIngredients2) == 20);
         Console.WriteLine(CalculateFreshnessPart2(ranges, ingredients));
         
-        // 726964187350064 is too high
+        // 356063931066729 is too high
     }
     
     private static long CalculateFreshness(List<(long low, long high)> ranges, List<long> ingredients)
@@ -58,26 +58,24 @@ public class Program
         }
 
         // Order sets
-        long thresHold = 0;
-        long rhs = 0;
-        long maxNumber = overlappingRanges.Select(x => x.high).Max();
-        while (rhs != maxNumber)
+        var sorted = overlappingRanges.OrderBy(r => r.low).ToList();
+        var merged = new List<(long low, long high)>();
+
+        foreach (var range in sorted)
         {
-            var lhs = overlappingRanges.SelectMany(r => new[] { r.low, r.high + 1 })
-                .Where(v => v > thresHold)
-                .Min();
-
-            rhs = overlappingRanges
-                .SelectMany(r => new[] { r.low - 1, r.high })
-                .Where(v => v > lhs)
-                .Min();
-
-            thresHold = rhs;
-            Console.WriteLine($"LHS: {lhs}, RHS: {rhs}");
-            nonOverlappingRanges.Add((lhs, rhs));
+            if (merged.Count == 0 || merged.Last().high < range.low - 1)
+            {
+                merged.Add(range);
+            } 
+            else
+            {
+                var last = merged.Last();
+                merged[merged.Count - 1] = (last.low, Math.Max(last.high, range.high));
+            }
         }
+        nonOverlappingRanges.AddRange(merged);
         
-        return nonOverlappingRanges.Select(r => r.high - r.low + 1).Sum();
+        return nonOverlappingRanges.Sum(r => r.high - r.low + 1);
     }
 
     private static void ReadData(string fileName, out List<(long low, long high)> ranges, out List<long> ingredients)
