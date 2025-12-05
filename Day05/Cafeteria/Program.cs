@@ -4,15 +4,19 @@ public class Program
 {
     static void Main(string[] args)
     {
-        List<(long low, long high)> testRanges, ranges;
-        List<long> testIngredients, ingredients;
+        List<(long low, long high)> testRanges, testRanges2, ranges;
+        List<long> testIngredients, testIngredients2, ingredients;
         
         ReadData("testdata.txt", out testRanges, out testIngredients);
+        ReadData("testdata2.txt", out testRanges2, out testIngredients2);
         ReadData("data.txt", out ranges, out ingredients);
         Debug.Assert(CalculateFreshness(testRanges, testIngredients) == 3);
         Console.WriteLine(CalculateFreshness(ranges, ingredients));
-        Debug.Assert(CalculateFreshnessPart2(testRanges, testIngredients) == 14);
+        // Debug.Assert(CalculateFreshnessPart2(testRanges, testIngredients) == 14);
+        Debug.Assert(CalculateFreshnessPart2(testRanges2, testIngredients2) == 23);
         Console.WriteLine(CalculateFreshnessPart2(ranges, ingredients));
+        
+        // 726964187350064 is too high
     }
     
     private static long CalculateFreshness(List<(long low, long high)> ranges, List<long> ingredients)
@@ -37,6 +41,8 @@ public class Program
         
         foreach (var range in relevantRanges)
         {
+            Console.WriteLine($"Checking range: {range.low} - {range.high}");
+            
             if (relevantRanges.Except(new[] {range})
                 .All(otherRange => (otherRange.high < range.low && otherRange.low < range.low) || 
                                    (otherRange.low > range.high && otherRange.high > range.high)))
@@ -52,26 +58,26 @@ public class Program
         }
 
         // Order sets
-        var lowest = overlappingRanges.OrderBy(r => r.low).Select(r => r.low).First();
-        var highest = overlappingRanges.OrderByDescending(r => r.low).Select(r => r.high).First();
+        long thresHold = 0;
+        long rhs = 0;
+        long maxNumber = overlappingRanges.Select(x => x.high).Max();
+        while (rhs != maxNumber)
+        {
+            var lhs = overlappingRanges.SelectMany(r => new[] { r.low, r.high + 1 })
+                .Where(v => v > thresHold)
+                .Min();
 
-        List<long> leftHandSides = overlappingRanges
-            .SelectMany(r => new[] { r.low, r.high + 1 })
-            .OrderBy(v => v)
-            .Take(overlappingRanges.Count * 2 - 1)
-            .ToList();
+            rhs = overlappingRanges
+                .SelectMany(r => new[] { r.low - 1, r.high })
+                .Where(v => v > lhs)
+                .Min();
+
+            thresHold = rhs;
+            Console.WriteLine($"LHS: {lhs}, RHS: {rhs}");
+            nonOverlappingRanges.Add((lhs, rhs));
+        }
         
-        List<long> rightHandSides = overlappingRanges
-            .Select(r => r.high)
-            .OrderBy(v => v)
-            .ToList();
-
-        // Print all combinations
-        leftHandSides.ForEach(x => Console.WriteLine($"LHS {x}"));
-        rightHandSides.ForEach(x => Console.WriteLine($"RHS {x}"));
-
-        
-        return freshIngredients;
+        return nonOverlappingRanges.Select(r => r.high - r.low + 1).Sum();
     }
 
     private static void ReadData(string fileName, out List<(long low, long high)> ranges, out List<long> ingredients)
