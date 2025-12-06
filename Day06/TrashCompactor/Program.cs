@@ -14,6 +14,7 @@ public class Program
         Debug.Assert(CalcPart2() == 3263827);
         ReadData("data.txt");
         Console.WriteLine(CalcPart1());
+        Console.WriteLine(CalcPart2());
     }
 
     private static long CalcPart1()
@@ -22,17 +23,12 @@ public class Program
         for (var col = 0; col < _nums[0].Count; col++)
         {
             var isAdd = _operations[col] == '+';
-            long columnResult = isAdd ? 0 : 1;
+            long columnResult = isAdd ? 0 : 1; // If add, start with 0, multiplication start with 1
             for (var row = 0; row < _nums.Count; row++)
             {
-                if (isAdd)
-                {
-                    columnResult += _nums[row][col];
-                }
-                else // Multiply
-                {
-                    columnResult *= _nums[row][col];
-                }
+                columnResult = isAdd
+                    ? columnResult + _nums[row][col]
+                    : columnResult * _nums[row][col];
             }
             result += columnResult;
         }
@@ -43,44 +39,33 @@ public class Program
     private static long CalcPart2()
     {
         long result = 0;
-        for (var col = 0; col < _nums[0].Count; col++)
+        var maxLengths = _numStrings.Select(row => row.Max(x => x.Length)).ToList();
+        
+        for (var col = 0; col < _numStrings.Count; col++)
         {
             var isAdd = _operations[col] == '+';
             long columnResult = isAdd ? 0 : 1;
 
-            List<string> entries = new();
-            for (var row = 0; row < _nums.Count; row++)
+            for (var length = maxLengths[col]; length > 0; length--)
             {
-                entries.Add(_nums[row][col].ToString());
-            }
-            var maxLength = entries.Max(x => x.Length);
-            
-            for (var length = maxLength; length > 0; length--)
-            {
-                var relevantEntries = entries.Where(x => x.Length >= length).ToList();
-                if (relevantEntries.Count == 0) continue;
+                var newEntry = string.Empty;
+                for (var row = 0; row < _numStrings[0].Count; row++)
+                {
+                    var entry = _numStrings[col][row];
+                    var newNum = _numStrings[col][row][entry.Length - length];
+                    if (newNum == ' ') continue;
+                    
+                    newEntry += newNum;
+                }
                 
-                var newNumber = string.Empty;
-                foreach (var entry in relevantEntries)
-                {
-                    var idx = entry.Length - length;
-                    newNumber += entry[idx];
-                }
-
-                if (isAdd)
-                {
-                    columnResult += int.Parse(newNumber);
-                }
-                else
-                {
-                    columnResult *= int.Parse(newNumber);
-                }
+                columnResult = isAdd
+                    ? columnResult + long.Parse(newEntry)
+                    : columnResult * long.Parse(newEntry);
             }
-            Console.WriteLine($"Obtained {columnResult}");
+
             result += columnResult;
         }
-
-        Console.WriteLine(result);
+        
         return result;
     }
 
@@ -102,9 +87,8 @@ public class Program
             }
         }
         
-        // For each column, determine the longest length of a number
+        // For part 2; Obtain a List of string preserving whitespaces. Strings can be left or right aligned
         var lines = File.ReadAllLines($"../../../{filename}");
-        // var offset = 0;
         
         var colCount = _nums[0].Count;
         var maxLengths = new int[colCount];
@@ -119,10 +103,9 @@ public class Program
             {
                 var line = lines[lineIdx];
                 var found = line.Substring(offset, maxLengths[col]);
-                Console.WriteLine($"Found {found}");
                 newEntry.Add(found);
             }
-            offset += maxLengths[col] + 1;
+            offset += maxLengths[col] + 1; // Keep track of where we should start scanning a new entry
             _numStrings.Add(newEntry);
         }
     }
