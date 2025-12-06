@@ -74,7 +74,8 @@ public class Program
         _nums = new();
         _numStrings = new();
         _operations = new();
-        foreach (var line in File.ReadAllLines($"../../../{filename}"))
+        
+        foreach (var line in File.ReadAllLines(filename))
         {
             var entries = Regex.Split(line.Trim(), @"\s+");
             if (long.TryParse(entries[0], out long _))
@@ -88,7 +89,7 @@ public class Program
         }
         
         // For part 2; Obtain a List of string preserving whitespaces. Strings can be left or right aligned
-        var lines = File.ReadAllLines($"../../../{filename}");
+        var lines = File.ReadAllLines(filename);
         
         var colCount = _nums[0].Count;
         var maxLengths = new int[colCount];
