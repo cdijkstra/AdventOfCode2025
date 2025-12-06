@@ -68,6 +68,6 @@ internal class Program
 
     private static string[] ReadData(string fileName)
     {
-        return File.ReadAllText($"../../../{fileName}").Split(',');
+        return File.ReadAllText(fileName).Split(',');
     }
 }
