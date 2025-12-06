@@ -109,5 +109,6 @@ public class Program
             offset += maxLengths[col] + 1; // Keep track of where we should start scanning a new entry
             _numStrings.Add(newEntry);
         }
+        // The columns have become rows in the List<List<string>>
     }
 }
