@@ -1,11 +1,9 @@
 ﻿using System.Diagnostics;
-
 public class Program
 {
     private static List<List<char>> _grid = new();
-    private static Dictionary<(int row, int col), int> _memo = new();
-
-    // main function
+    private static Dictionary<(int row, int col), long> _memo = new();
+    
     static void Main(string[] args)
     {
         ReadFile("testData.txt");
@@ -25,60 +23,61 @@ public class Program
     private static int SolvePart1()
     {
         var startCoors = FindCoordinates('S');
-        var beams = new List<(int row, int col)>();
-        beams.Add((startCoors.row, startCoors.col));
+        var beams = new List<(int row, int col)> { FindCoordinates('S') };
         
-        var fallingDistance = _grid.Count - startCoors.row - 1; // Check later
+        var fallingDistance = _grid.Count - startCoors.row - 1; // Amount of steps in loop
 
         var splits = 0;
-        foreach (var fallStep in Enumerable.Range(1, fallingDistance))
+        foreach (var _ in Enumerable.Range(1, fallingDistance))
         {
             var newBeams = new List<(int row, int col)>();
             foreach (var beam in beams)
             {
-                // Examine beam.row + 1 and beam.col
                 var gridElement = _grid[beam.row + 1][beam.col];
-                if (gridElement == '^')
+                switch (gridElement)
                 {
-                    splits++;
-                    var leftSpit = (beam.row + 1, beam.col - 1);
-                    var rightSpit = (beam.row + 1, beam.col + 1);
-                    newBeams.AddRange(leftSpit, rightSpit);
-                }
-                else
-                {
-                    newBeams.Add((beam.row + 1, beam.col));
+                    case '^':
+                    {
+                        var leftSpit = (beam.row + 1, beam.col - 1);
+                        var rightSpit = (beam.row + 1, beam.col + 1);
+                        newBeams.AddRange(leftSpit, rightSpit);
+                        splits++;
+                        break;
+                    }
+                    case '.':
+                        newBeams.Add((beam.row + 1, beam.col));
+                        break;
+                    default:
+                        throw new Exception("Invalid grid element");
                 }
             }
 
-            beams = newBeams.Distinct().ToList();
+            beams = newBeams.Distinct().ToList(); // Only keep unique beams
         }
         
         return splits;
     }
     
-    private static int SolvePart2()
+    private static long SolvePart2()
     {
         _memo = new();
         var startCoors = FindCoordinates('S');
-        var answer = CalculateContributionFrom(startCoors);
-        Console.WriteLine(answer);
-        return answer;
+        return CalculateContributionFrom(startCoors); // Solve using recursion
     }
 
-    private static int CalculateContributionFrom((int row, int col) coors)
+    private static long CalculateContributionFrom((int row, int col) coors)
     {
         if (_memo.TryGetValue(coors, out var from))
         {
             return from;
         }
         
-        if (coors.row == _grid.Count - 1)
+        if (coors.row == _grid.Count - 1) // End of grid reached
         {
             return 1;
         }
 
-        int result;
+        long result;
         if (_grid[coors.row + 1][coors.col] == '^')
         {
             result = CalculateContributionFrom((coors.row + 1, coors.col - 1))
