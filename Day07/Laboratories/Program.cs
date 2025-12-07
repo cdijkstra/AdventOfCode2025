@@ -3,6 +3,8 @@
 public class Program
 {
     private static List<List<char>> _grid = new();
+    private static Dictionary<(int row, int col), int> _memo = new();
+
     // main function
     static void Main(string[] args)
     {
@@ -57,6 +59,7 @@ public class Program
     
     private static int SolvePart2()
     {
+        _memo = new();
         var startCoors = FindCoordinates('S');
         var answer = CalculateContributionFrom(startCoors);
         Console.WriteLine(answer);
@@ -65,18 +68,29 @@ public class Program
 
     private static int CalculateContributionFrom((int row, int col) coors)
     {
+        if (_memo.TryGetValue(coors, out var from))
+        {
+            return from;
+        }
+        
         if (coors.row == _grid.Count - 1)
         {
             return 1;
         }
 
+        int result;
         if (_grid[coors.row + 1][coors.col] == '^')
         {
-            return CalculateContributionFrom((coors.row + 1, coors.col - 1))
-                   + CalculateContributionFrom((coors.row + 1, coors.col + 1));
+            result = CalculateContributionFrom((coors.row + 1, coors.col - 1))
+                     + CalculateContributionFrom((coors.row + 1, coors.col + 1));
         }
-
-        return CalculateContributionFrom((coors.row + 1, coors.col));
+        else
+        {
+            result = CalculateContributionFrom((coors.row + 1, coors.col));
+        }
+        
+        _memo[coors] = result;
+        return result;
     }
 
     private static (int row, int col) FindCoordinates(char element)
