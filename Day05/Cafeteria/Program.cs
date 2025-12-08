@@ -56,7 +56,7 @@ public class Program
     {
         ranges = new();
         ingredients = new();
-        foreach (var line in File.ReadAllLines($"../../../{fileName}").ToList())
+        foreach (var line in File.ReadAllLines(fileName).ToList())
         {
             if (line.Contains('-'))
             {

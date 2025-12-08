@@ -68,7 +68,7 @@ class Program
 
     private static string[] ReadData(string fileName)
     {
-        return File.ReadAllLines($"../../../{fileName}");
+        return File.ReadAllLines(fileName);
     }
 }
 

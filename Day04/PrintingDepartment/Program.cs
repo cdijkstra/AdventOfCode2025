@@ -15,7 +15,7 @@ public class Program
 
     private static List<string> ReadData(string fileName)
     {
-        return File.ReadAllLines($"../../../{fileName}").ToList();
+        return File.ReadAllLines(fileName).ToList();
     }
     
     private static int CalculateAmountOfPaper(List<string> data)
@@ -44,7 +44,6 @@ public class Program
 
         while ((removedPaperInIteration.Count != 0 && iteration > 1) || iteration == 1)
         {
-            Console.WriteLine($"Iteration {iteration}");
             removedPaperInIteration = new();
             for (var row = 0; row != data.Count; row++)
             {
