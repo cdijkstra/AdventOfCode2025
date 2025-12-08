@@ -1,6 +1,25 @@
 ﻿using System.Diagnostics;
 using Playground;
 
+public class JunctionPair
+{
+    public Junction A { get; set; }
+    public Junction B { get; set; }
+    public int Distance { get; set; }
+
+    public JunctionPair(Junction a, Junction b, int distance)
+    {
+        A = a;
+        B = b;
+        Distance = distance;
+    }
+
+    public override string ToString()
+    {
+        return $"{A.Name} <-> {B.Name} : {Distance}";
+    }
+}
+
 public class Program
 {
     private static List<Junction> _junctions = new();
@@ -16,11 +35,28 @@ public class Program
 
     private static int SolvePart1(int repeats, int multiplyLargestNum = 3)
     {
-        foreach (var _ in Enumerable.Range(0, repeats))
+        var connected = 0;
+        var topPairs = GetTopPairs(repeats);
+        var idx = 0;
+        while (connected != repeats)
         {
-            ConnectJolts();
-        }
+            var A = topPairs[idx].A;
+            var B = topPairs[idx].B;
+            if (A.ConnectedTo.Contains(B))
+            {
+                Console.WriteLine($"Skipping {A.Name} with {B.Name} (already connected)");
+            }
+            else
+            {
+                Console.WriteLine($"Connecting {A.Name} with {B.Name}");
+                A.ConnectedTo.Add(B);
+                B.ConnectedTo.Add(A);
+                connected++;
+            }
 
+            idx++;
+        }
+        
         var circuits = FindCircuits();
         var largestNums = circuits
             .Select(x => x.Count)
@@ -90,6 +126,38 @@ public class Program
         _junctions[leftJunctionIdx].ConnectedTo.Add(_junctions[rightJunctionIdx]);
         _junctions[rightJunctionIdx].ConnectedTo.Add(_junctions[leftJunctionIdx]);
     }
+   
+   
+    public static List<JunctionPair> GetTopPairs(int topN)
+    {
+        var pairs = new List<JunctionPair>();
+
+        for (int i = 0; i < _junctions.Count - 1; i++)
+        {
+            for (int j = i + 1; j < _junctions.Count; j++)
+            {
+                var j1 = _junctions[i];
+                var j2 = _junctions[j];
+                int distance = j1.Coordinate.DistanceTo(j2.Coordinate);
+                pairs.Add(new JunctionPair(j1, j2, distance));
+            }
+        }
+
+        // Sort descending by distance
+        pairs.Sort((p1, p2) => p1.Distance.CompareTo(p2.Distance));
+        
+        // Take enough pairs for duplicates
+        var topPairs = pairs
+            .Take(2 * topN)
+            .ToList();
+        foreach (var pair in topPairs)
+        {
+            Console.WriteLine($"Connecting {pair.A.Name} with {pair.B.Name} (distance {pair.Distance})");
+        }
+
+        return topPairs;
+    }
+
 
     private static void ReadFile(string fileName)
     {
