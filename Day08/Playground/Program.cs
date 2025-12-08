@@ -4,7 +4,6 @@ using Playground;
 public class Program
 {
     private static List<Junction> _junctions = new();
-    private static int MinDistance = 0;
     static void Main(string[] args)
     {
         ReadFile("testData.txt");
@@ -30,7 +29,6 @@ public class Program
             .ToList();
         return largestNums.Aggregate(1, (a, b) => a * b);
     }
-
     
     private static List<List<Junction>> FindCircuits()
     {
@@ -49,19 +47,23 @@ public class Program
         return circuits;
     }
 
-    private static List<Junction> CreateCircuit(Junction junction, List<Junction>? circuit = null)
+    private static List<Junction> CreateCircuit(Junction start)
     {
-        circuit ??= new List<Junction>();
-        circuit.Add(junction);
-        foreach (var connectedJunction in junction.ConnectedTo)
-        { 
-            if (circuit.Contains(connectedJunction)) continue;
-            circuit.AddRange(CreateCircuit(connectedJunction, circuit));
-        }
-        return circuit.Distinct().ToList();
+        var visited = new HashSet<Junction>();
+        ExploreCircuit(start, visited);
+        return visited.ToList();
+    }
+    
+    private static void ExploreCircuit(Junction j, HashSet<Junction> visited)
+    {
+        if (!visited.Add(j))
+            return;
+
+        foreach (var next in j.ConnectedTo)
+            ExploreCircuit(next, visited);
     }
 
-   private static bool ConnectJolts()
+   private static void ConnectJolts()
     {
         int minDistance = int.MaxValue, leftJunctionIdx = int.MaxValue, rightJunctionIdx = int.MaxValue;
         
@@ -72,14 +74,12 @@ public class Program
             {
                 var junction2 = _junctions[junctionIdx2];
                 var distance = junction1.Coordinate.DistanceTo(junction2.Coordinate);
-                if (distance >= minDistance || distance < MinDistance) continue;
-                if (distance == MinDistance)
-                {
-                    if (_junctions[junctionIdx1].ConnectedTo.Contains(_junctions[junctionIdx2]))
-                    {
-                        continue;
-                    }
-                }
+                
+                if (distance > minDistance)
+                    continue;
+                
+                if (junction1.ConnectedTo.Contains(junction2))
+                    continue;
                 
                 minDistance = distance;
                 leftJunctionIdx = junctionIdx1;
@@ -87,10 +87,8 @@ public class Program
             }
         }
         
-        MinDistance = minDistance;
         _junctions[leftJunctionIdx].ConnectedTo.Add(_junctions[rightJunctionIdx]);
         _junctions[rightJunctionIdx].ConnectedTo.Add(_junctions[leftJunctionIdx]);
-        return true;
     }
 
     private static void ReadFile(string fileName)
