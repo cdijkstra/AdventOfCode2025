@@ -45,11 +45,12 @@ public class Program
         ReadData(fileName);
 
         _grid.CreateConnectedGrid();
-        long maxArea = 0;
         var redCoordinates = _grid.Data
             .Where(c => c.Type == TileType.Red)
             .ToList();
         
+        Console.WriteLine("Starting priority queue");
+        var pq = new PriorityQueue<(Coordinates left, Coordinates right, long area), long>();
         
         for (var i = 0; i < redCoordinates.Count; i++)
         {
@@ -57,34 +58,47 @@ public class Program
             for (var j = i + 1; j < redCoordinates.Count; j++)
             {
                 var point2 = redCoordinates[j];
-                long dx = point1.X - point2.X;
-                long dy = point1.Y - point2.Y;
-
-                if (dx != 0 && dy != 0)
-                {
-                    var minX = Math.Min(point1.X, point2.X);
-                    var maxX = Math.Max(point1.X, point2.X);
-                    var minY = Math.Min(point1.Y, point2.Y);
-                    var maxY = Math.Max(point1.Y, point2.Y);
-
-                    bool allFilled = true;
-                    for (var x = minX; x <= maxX && allFilled; x++)
-                    {
-                        for (var y = minY; y <= maxY; y++)
-                        {
-                            if (!_grid.Data.Any(c => c.X == x && c.Y == y))
-                            {
-                                allFilled = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (!allFilled) continue;
-                }
                 
                 var area = (Math.Abs(point1.X - point2.X) + 1) * (Math.Abs(point1.Y - point2.Y) + 1);
-                if (area > maxArea)
-                    maxArea = area;
+                pq.Enqueue((point1, point2,area), area);
+            }
+        }
+
+        Console.WriteLine("Start reading from queue");
+        long maxArea = 0;
+        
+        while (pq.Count > 0)
+        {
+            var pair = pq.Dequeue();
+            long dx = pair.left.X - pair.right.X;
+            long dy = pair.left.Y - pair.right.Y;
+            
+            if (dx != 0 && dy != 0)
+            {
+                var minX = Math.Min(pair.left.X, pair.right.X);
+                var maxX = Math.Max(pair.left.X, pair.right.X);
+                var minY = Math.Min(pair.left.Y, pair.right.Y);
+                var maxY = Math.Max(pair.left.Y, pair.right.Y);
+            
+                bool allFilled = true;
+                for (var x = minX; x <= maxX && allFilled; x++)
+                {
+                    for (var y = minY; y <= maxY; y++)
+                    {
+                        if (!_grid.Data.Any(c => c.X == x && c.Y == y))
+                        {
+                            allFilled = false;
+                            break;
+                        }
+                    }
+                }
+                if (!allFilled) continue;
+
+                if (pair.area > maxArea)
+                {
+                    maxArea = pair.area;
+                    Console.WriteLine(maxArea);
+                }
             }
         }
         

@@ -89,7 +89,9 @@ class Grid
             }
         }
 
+        Console.WriteLine("Finished creating connected grid");
         FloodFillInterior();
+        Console.WriteLine("Finished flooding");
     }
 
     private void AddGreen(Coordinates neighbor, Coordinates entry)
@@ -115,15 +117,19 @@ class Grid
         }
     }
     
+    // Fill the interior with X's (TileType.Green)
     private void FloodFillInterior()
     {
+        // Build a set for fast lookup
+        var filled = new HashSet<(long, long)>(Data.Select(c => (c.X, c.Y)));
+
         // Find a starting interior point
         Coordinates? start = null;
         for (var x = MinX() + 1; x < MaxX(); x++)
         {
             for (var y = MinY() + 1; y < MaxY(); y++)
             {
-                if (Data.All(c => c.X != x || c.Y != y))
+                if (!filled.Contains((x, y)))
                 {
                     start = new Coordinates(TileType.Red, x, y);
                     break;
@@ -131,7 +137,7 @@ class Grid
             }
             if (start != null) break;
         }
-        if (start == null) return; // No interior found
+        if (start == null) return;
 
         var visited = new HashSet<(long, long)>();
         var queue = new Queue<Coordinates>();
@@ -140,29 +146,27 @@ class Grid
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
-            if (visited.Contains((current.X, current.Y))) continue;
-            visited.Add((current.X, current.Y));
+            var key = (current.X, current.Y);
+            if (visited.Contains(key) || filled.Contains(key)) continue;
+            visited.Add(key);
 
-            // Only fill empty cells
-            if (Data.All(c => c.X != current.X || c.Y != current.Y))
-            {
-                Data.Add(new Coordinates(TileType.Green, current.X, current.Y));
-            }
+            Data.Add(new Coordinates(TileType.Green, current.X, current.Y));
+            filled.Add(key);
 
-            var directions = new (long dx, long dy)[] { (-1, 0), (1, 0), (0, -1), (0, 1) };
-            foreach (var (dx, dy) in directions)
+            foreach (var (dx, dy) in new (long, long)[] { (-1, 0), (1, 0), (0, -1), (0, 1) })
             {
                 var nx = current.X + dx;
                 var ny = current.Y + dy;
                 if (nx <= MinX() || nx >= MaxX() || ny <= MinY() || ny >= MaxY()) continue;
-                
-                if (Data.All(c => c.X != nx || c.Y != ny) && !visited.Contains((nx, ny)))
+                var nkey = (nx, ny);
+                if (!visited.Contains(nkey) && !filled.Contains(nkey))
                 {
                     queue.Enqueue(new Coordinates(TileType.Green, nx, ny));
                 }
             }
         }
     }
+
 
     private List<Coordinates> FindNeighbors(Coordinates coors)
     {
