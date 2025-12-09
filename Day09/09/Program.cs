@@ -60,7 +60,7 @@ public class Program
                 var point2 = redCoordinates[j];
                 
                 var area = (Math.Abs(point1.X - point2.X) + 1) * (Math.Abs(point1.Y - point2.Y) + 1);
-                pq.Enqueue((point1, point2,area), area);
+                pq.Enqueue((point1, point2,area), -area);
             }
         }
 
@@ -88,8 +88,8 @@ public class Program
                         // If we find any point not in Data or in Interior range, we stop
                         if (!(_grid.Data.Any(c => c.X == x && c.Y == y) ||
                             _grid.Interior.Any(inter => inter.Y == y && 
-                                                         inter.FromX < x && 
-                                                         inter.ToX > x)))
+                                                         inter.FromX <= x && 
+                                                         inter.ToX >= x)))
                         {
                             allFilled = false;
                             break;
