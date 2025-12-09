@@ -82,7 +82,6 @@ public class Program
                 var point2 = reds[j];
                 
                 var area = (Math.Abs(point1.X - point2.X) + 1) * (Math.Abs(point1.Y - point2.Y) + 1);
-                if (area > 2930732777) continue;
                 Console.WriteLine($"Considering ({point1.X},{point1.Y}) and ({point2.X},{point2.Y}) with area {area}");
                 pq.Enqueue((point1, point2, area), -area);
             }
@@ -93,7 +92,6 @@ public class Program
         while (pq.Count > 0)
         {
             var pair = pq.Dequeue();
-            // Console.WriteLine($"Processing ({pair.left.X},{pair.left.Y}) and ({pair.right.X},{pair.right.Y}) with area {pair.area}");
             long dx = pair.left.X - pair.right.X;
             long dy = pair.left.Y - pair.right.Y;
         
@@ -105,39 +103,29 @@ public class Program
             var maxY = Math.Max(pair.left.Y, pair.right.Y);
             
             var dataSet = new HashSet<(long, long)>(_grid.Data.Select(c => (c.X, c.Y)));
+            bool allInside = true;
+            for (var xBorder = minX; xBorder <= maxX && allInside; xBorder++)
+            {
+                if (!dataSet.Contains((xBorder, minY)) || !dataSet.Contains((xBorder, maxY)))
+                {
+                    allInside = false;
+                }
+            }
+            for (var yBorder = minY; yBorder <= maxY && allInside; yBorder++)
+            {
+                if (!dataSet.Contains((minX, yBorder)) || !dataSet.Contains((maxX, yBorder)))
+                {
+                    allInside = false;
+                }
+            }
+
+            if (allInside)
+            {
+                Console.WriteLine($"Found intersection at ({pair.left.X},{pair.left.Y}) and ({pair.right.X},{pair.right.Y}) with area {pair.area}");
+                return pair.area;
+            }
         }
         
         return 0;
-    }
-    
-    private static List<Coordinates> FindAllNeighbors(Coordinates coors)
-    {
-        var neighbors = new List<Coordinates>();
-        var leftNeighbor = _grid.Data
-            .Where(c => c.Y == coors.Y && c.X < coors.X)
-            .OrderByDescending(c => c.X)
-            .FirstOrDefault();
-
-        var rightNeighbor = _grid.Data
-            .Where(c => c.Y == coors.Y && c.X > coors.X)
-            .OrderBy(c => c.X)
-            .FirstOrDefault();
-        
-        var upNeighbor = _grid.Data
-            .Where(c => c.X == coors.X && c.Y > coors.Y)
-            .OrderByDescending(c => c.X)
-            .FirstOrDefault();
-
-        var downNeighbor = _grid.Data
-            .Where(c => c.X == coors.X && c.Y < coors.Y)
-            .OrderBy(c => c.X)
-            .FirstOrDefault();
-
-        if (leftNeighbor != null) neighbors.Add(leftNeighbor);
-        if (rightNeighbor != null) neighbors.Add(rightNeighbor);
-        if (upNeighbor != null) neighbors.Add(upNeighbor);
-        if (downNeighbor != null) neighbors.Add(downNeighbor);
-        
-        return neighbors;
     }
 }
