@@ -85,7 +85,11 @@ public class Program
                 {
                     for (var y = minY; y <= maxY; y++)
                     {
-                        if (!_grid.Data.Any(c => c.X == x && c.Y == y))
+                        // If we find any point not in Data or in Interior range, we stop
+                        if (!(_grid.Data.Any(c => c.X == x && c.Y == y) ||
+                            _grid.Interior.Any(inter => inter.Y == y && 
+                                                         inter.FromX < x && 
+                                                         inter.ToX > x)))
                         {
                             allFilled = false;
                             break;

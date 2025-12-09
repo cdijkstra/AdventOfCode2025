@@ -6,6 +6,7 @@ namespace _09;
 class Grid
 {
     public List<Coordinates> Data = new();
+    public List<HorizontalRange> Interior = new();
     public Grid(List<Coordinates> data)
     {
         Data = new();
@@ -117,54 +118,34 @@ class Grid
         }
     }
     
-    // Fill the interior with X's (TileType.Green)
     private void FloodFillInterior()
     {
-        // Build a set for fast lookup
+        Interior = new();
         var filled = new HashSet<(long, long)>(Data.Select(c => (c.X, c.Y)));
+        var ranges = new List<HorizontalRange>();
 
-        // Find a starting interior point
-        Coordinates? start = null;
-        for (var x = MinX() + 1; x < MaxX(); x++)
+        for (var y = MinY() + 1; y < MaxY(); y++)
         {
-            for (var y = MinY() + 1; y < MaxY(); y++)
+            long? rangeStart = null;
+            for (var x = MinX() + 1; x < MaxX(); x++)
             {
                 if (!filled.Contains((x, y)))
                 {
-                    start = new Coordinates(TileType.Red, x, y);
-                    break;
+                    rangeStart ??= x;
                 }
-            }
-            if (start != null) break;
-        }
-        if (start == null) return;
-
-        var visited = new HashSet<(long, long)>();
-        var queue = new Queue<Coordinates>();
-        queue.Enqueue(start);
-
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            var key = (current.X, current.Y);
-            if (visited.Contains(key) || filled.Contains(key)) continue;
-            visited.Add(key);
-
-            Data.Add(new Coordinates(TileType.Green, current.X, current.Y));
-            filled.Add(key);
-
-            foreach (var (dx, dy) in new (long, long)[] { (-1, 0), (1, 0), (0, -1), (0, 1) })
-            {
-                var nx = current.X + dx;
-                var ny = current.Y + dy;
-                if (nx <= MinX() || nx >= MaxX() || ny <= MinY() || ny >= MaxY()) continue;
-                var nkey = (nx, ny);
-                if (!visited.Contains(nkey) && !filled.Contains(nkey))
+                else
                 {
-                    queue.Enqueue(new Coordinates(TileType.Green, nx, ny));
+                    if (rangeStart == null) continue;
+                    ranges.Add(new HorizontalRange(y, rangeStart.Value, x - 1));
+                    rangeStart = null;
                 }
             }
+            if (rangeStart != null)
+            {
+                ranges.Add(new HorizontalRange(y, rangeStart.Value, MaxX() - 1));
+            }
         }
+        Interior = ranges;
     }
 
 
