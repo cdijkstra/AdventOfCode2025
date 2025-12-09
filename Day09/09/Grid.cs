@@ -79,7 +79,12 @@ class Grid
                     break;
                 }
                 case 3:
-                    Console.WriteLine($"3 neighbors found for {entry.X}, {entry.Y}; Oh noooo");
+                    var newwNeighbors = neighbors
+                        .Where(n => !visited.Any(v => v.X == n.X && v.Y == n.Y))
+                        .ToList();
+                    Console.Write($"3 neighbors found for {entry.X}, {entry.Y}; unique = " + newwNeighbors.Count());
+
+
                     return;
             }
         }
@@ -161,28 +166,33 @@ class Grid
 
     private List<Coordinates> FindNeighbors(Coordinates coors)
     {
-        List<Coordinates> neighbors = new();
+        var neighbors = new List<Coordinates>();
+        var leftNeighbor = Data
+            .Where(c => c.Y == coors.Y && c.X < coors.X && c.Type == TileType.Red)
+            .OrderByDescending(c => c.X)
+            .FirstOrDefault();
 
-        // Assume DataSet is a HashSet<Coordinates> built from Data
-        var dataSet = new HashSet<Coordinates>(Data);
+        var rightNeighbor = Data
+            .Where(c => c.Y == coors.Y && c.X > coors.X && c.Type == TileType.Red)
+            .OrderBy(c => c.X)
+            .FirstOrDefault();
+        
+        var upNeighbor = Data
+            .Where(c => c.X == coors.X && c.Y > coors.Y && c.Type == TileType.Red)
+            .OrderByDescending(c => c.X)
+            .FirstOrDefault();
 
-        var directions = new (long dx, long dy)[] { (-1, 0), (1, 0), (0, -1), (0, 1) };
-        foreach (var (dx, dy) in directions)
-        {
-            var x = coors.X + dx;
-            var y = coors.Y + dy;
-            while (x >= MinX() && x <= MaxX() && y >= MinY() && y <= MaxY())
-            {
-                var neighbor = new Coordinates(TileType.Red, x, y);
-                if (dataSet.Contains(neighbor))
-                {
-                    neighbors.Add(neighbor);
-                    break;
-                }
-                x += dx;
-                y += dy;
-            }
-        }
+        var downNeighbor = Data
+            .Where(c => c.X == coors.X && c.Y < coors.Y && c.Type == TileType.Red)
+            .OrderBy(c => c.X)
+            .FirstOrDefault();
+
+        if (leftNeighbor != null) neighbors.Add(leftNeighbor);
+        if (rightNeighbor != null) neighbors.Add(rightNeighbor);
+        if (upNeighbor != null) neighbors.Add(upNeighbor);
+        if (downNeighbor != null) neighbors.Add(downNeighbor);
+        
+        Console.WriteLine($"Found {neighbors.Count} neighbors for {coors.X}, {coors.Y}");
 
         return neighbors;
     }
