@@ -85,7 +85,6 @@ class Grid
         }
 
         FloodFillInterior();
-        Print();
     }
 
     private void AddGreen(Coordinates neighbor, Coordinates entry)

@@ -9,11 +9,8 @@ public class Program
     {
         Debug.Assert(Part1("testdata.txt") == 50);
         Debug.Assert(Part2("testdata.txt") == 24);
-        _grid.Print();
-        _grid.CreateConnectedGrid();
-        ReadData("data.txt");
-        _grid.CreateConnectedGrid();
-        // Console.WriteLine(Part1());
+        Console.WriteLine(Part1("data.txt"));
+        Console.WriteLine(Part2("data.txt"));
     }
     
     private static void ReadData(string fileName)
