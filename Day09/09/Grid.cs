@@ -1,12 +1,8 @@
-using System.Reflection.PortableExecutable;
-using System.Security.AccessControl;
-
 namespace _09;
 
 class Grid
 {
     public List<Coordinates> Data = new();
-    public List<HorizontalRange> Interior = new();
     public Grid(List<Coordinates> data)
     {
         Data = new();
@@ -69,6 +65,20 @@ class Grid
                 
                     if (newNeighbors.Count == 0)
                     {
+                        Console.WriteLine($"No new neighbors found, finishing at; {entry.X}, {entry.Y}");
+                        // Find the neighbor that is not connected by a green line and add it
+                        foreach (var neighbor in neighbors)
+                        {
+                            // Check if a green connection exists
+                            bool hasGreen = Data.Any(c =>
+                                ((c.X == neighbor.X && c.Y == neighbor.Y) || (c.X == entry.X && c.Y == entry.Y)) &&
+                                c.Type == TileType.Green);
+
+                            if (!hasGreen)
+                            {
+                                AddGreen(neighbor, entry);
+                            }
+                        }
                         finised = true;
                     }
                     else
@@ -90,10 +100,126 @@ class Grid
             }
         }
 
-        Console.WriteLine("Finished creating connected grid");
+        Print();
         FloodFillInterior();
+        Print();
+
+    }
+    
+    public void FloodFillInterior()
+    {
+        // Create a set of existing coordinates for fast lookup
+        var existingCoords = new HashSet<(long, long)>(Data.Select(c => (c.X, c.Y)));
+        
+        // Find a point inside the loop to start flood fill
+        var startPoint = FindInteriorPoint(existingCoords);
+        if (startPoint == null)
+        {
+            Console.WriteLine("Could not find interior point");
+            return;
+        }
+        
+        // Flood fill from the interior point
+        var queue = new Queue<(long X, long Y)>();
+        var visited = new HashSet<(long, long)>();
+        
+        queue.Enqueue(startPoint.Value);
+        visited.Add(startPoint.Value);
+        
+        // Directions: up, down, left, right
+        var directions = new[] { (0, 1), (0, -1), (-1, 0), (1, 0) };
+        
+        while (queue.Count > 0)
+        {
+            var current = queue.Dequeue();
+            
+            // Add this point as green if it's not already in Data
+            if (!existingCoords.Contains(current))
+            {
+                Data.Add(new Coordinates(TileType.Green, current.X, current.Y));
+                existingCoords.Add(current);
+            }
+            
+            // Check all 4 directions
+            foreach (var (dx, dy) in directions)
+            {
+                var newX = current.X + dx;
+                var newY = current.Y + dy;
+                var newPoint = (newX, newY);
+                
+                // Skip if already visited
+                if (visited.Contains(newPoint)) continue;
+                
+                // Skip if it's a boundary point (red coordinate)
+                if (Data.Any(c => c.X == newX && c.Y == newY && c.Type == TileType.Red)) continue;
+                
+                // Check if this point is inside the loop using ray casting
+                if (IsInsideLoop(newX, newY))
+                {
+                    visited.Add(newPoint);
+                    queue.Enqueue(newPoint);
+                }
+            }
+        }
+        
         Console.WriteLine("Finished flooding");
     }
+
+    private (long X, long Y)? FindInteriorPoint(HashSet<(long, long)> existingCoords)
+    {
+        // Find a point that's already green (connecting line) as starting point
+        var greenPoint = Data.FirstOrDefault(c => c.Type == TileType.Green);
+        if (greenPoint != null)
+        {
+            return (greenPoint.X, greenPoint.Y);
+        }
+        
+        // Alternative: scan horizontally and find a point between red boundaries
+        for (long y = MinY(); y <= MaxY(); y++)
+        {
+            var redPointsInRow = Data.Where(c => c.Y == y && c.Type == TileType.Red)
+                                    .OrderBy(c => c.X).ToList();
+            
+            if (redPointsInRow.Count >= 2)
+            {
+                // Find a point between first two red points
+                long midX = (redPointsInRow[0].X + redPointsInRow[1].X) / 2;
+                if (IsInsideLoop(midX, y))
+                {
+                    return (midX, y);
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    private bool IsInsideLoop(long x, long y)
+    {
+        // Ray casting algorithm - cast ray to the right and count intersections
+        var redPoints = Data.Where(c => c.Type == TileType.Red).ToList();
+        int intersections = 0;
+        
+        for (int i = 0; i < redPoints.Count; i++)
+        {
+            var p1 = redPoints[i];
+            var p2 = redPoints[(i + 1) % redPoints.Count];
+            
+            // Check if ray crosses this edge
+            if ((p1.Y > y) != (p2.Y > y))
+            {
+                // Calculate intersection x-coordinate
+                double intersectX = p1.X + (double)(p2.X - p1.X) * (y - p1.Y) / (p2.Y - p1.Y);
+                if (x < intersectX)
+                {
+                    intersections++;
+                }
+            }
+        }
+        
+        return (intersections % 2) == 1;
+    }
+
 
     private void AddGreen(Coordinates neighbor, Coordinates entry)
     {
@@ -114,28 +240,6 @@ class Grid
             for (var y = entry.Y + step; y != neighbor.Y; y += step)
             {
                 Data.Add(new Coordinates(TileType.Green, entry.X, y));
-            }
-        }
-    }
-
-    private void FloodExterior()
-    {
-        Interior = new();
-
-        for (var y = MinY() + 1; y < MaxY(); y++)
-        {
-            // Get all filled Xs for this row
-            var xs = Data.Where(c => c.Y == y).Select(c => c.X).OrderBy(x => x).ToList();
-            if (xs.Count < 2) continue; // Need at least two to form an interior
-
-            for (int i = 0; i < xs.Count - 1; i++)
-            {
-                long fromX = xs[i] + 1;
-                long toX = xs[i + 1] - 1;
-                if (fromX <= toX)
-                {
-                    Interior.Add(new HorizontalRange(y, fromX, toX));
-                }
             }
         }
     }
