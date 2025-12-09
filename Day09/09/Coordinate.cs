@@ -2,10 +2,10 @@ namespace _09;
 
 class Coordinates
 {
-    public int X { get; set; }
-    public int Y { get; set; }
+    public long X { get; set; }
+    public long Y { get; set; }
 
-    public Coordinates(int x, int y)
+    public Coordinates(long x, long y)
     {
         X = x;
         Y = y;

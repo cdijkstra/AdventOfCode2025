@@ -5,13 +5,14 @@ class Grid
     public List<Coordinates> Data = new();
     public Grid(List<Coordinates> data)
     {
+        Data = new();
         Data = data;
     }
     
-    public int MinX() => Data.Min(c => c.X);
-    public int MaxX() => Data.Max(c => c.X);
-    public int MinY() => Data.Min(c => c.Y);
-    public int MaxY() => Data.Max(c => c.Y);
+    public long MinX() => Data.Min(c => c.X);
+    public long MaxX() => Data.Max(c => c.X);
+    public long MinY() => Data.Min(c => c.Y);
+    public long MaxY() => Data.Max(c => c.Y);
 
     public void Print()
     {
