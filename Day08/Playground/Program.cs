@@ -1,47 +1,34 @@
 ﻿using System.Diagnostics;
 using Playground;
 
-public class JunctionPair
-{
-    public Junction A { get; set; }
-    public Junction B { get; set; }
-    public int Distance { get; set; }
-
-    public JunctionPair(Junction a, Junction b, int distance)
-    {
-        A = a;
-        B = b;
-        Distance = distance;
-    }
-
-    public override string ToString()
-    {
-        return $"{A.Name} <-> {B.Name} : {Distance}";
-    }
-}
-
 public class Program
 {
     private static List<Junction> _junctions = new();
     static void Main(string[] args)
     {
-        ReadFile("testData.txt");
-        Debug.Assert(SolvePart1(10) == 40);
+        // ReadFile("testData.txt");
+        // Debug.Assert(SolvePart1(10) == 40);
+        // ReadFile("testData.txt");
+        // Debug.Assert(SolvePart2() == 25272);
+        //
+        // ReadFile("data.txt");
+        // Console.WriteLine(SolvePart1(1000));
         ReadFile("data.txt");
-        Console.WriteLine(SolvePart1(1000));
-        
-        // 38688 Is too low
+        Console.WriteLine(SolvePart2());
+        // 170050948 is too low
     }
 
     private static int SolvePart1(int repeats, int multiplyLargestNum = 3)
     {
         var connected = 0;
-        var topPairs = GetTopPairs(repeats);
+        var topPairs = GetPairs(repeats, true);
         var idx = 0;
         while (connected != repeats)
         {
+            // Creating the connections
             var A = topPairs[idx].A;
             var B = topPairs[idx].B;
+            
             if (A.ConnectedTo.Contains(B))
             {
                 Console.WriteLine($"Skipping {A.Name} with {B.Name} (already connected)");
@@ -53,7 +40,7 @@ public class Program
                 B.ConnectedTo.Add(A);
                 connected++;
             }
-
+        
             idx++;
         }
         
@@ -63,7 +50,24 @@ public class Program
             .OrderByDescending(x => x)
             .Take(multiplyLargestNum)
             .ToList();
+        
         return largestNums.Aggregate(1, (a, b) => a * b);
+    }
+    
+    private static long SolvePart2()
+    {
+        var sortedPairs = GetPairs(5000, true);
+        var idx = -1;
+        while (FindCircuits().Count != 1)
+        {
+            idx++;
+            sortedPairs[idx].A.ConnectedTo.Add(sortedPairs[idx].B);
+            sortedPairs[idx].B.ConnectedTo.Add(sortedPairs[idx].A);
+        }
+        
+        long answer = (long) sortedPairs[idx].A.Coordinate.X * sortedPairs[idx].B.Coordinate.X;
+        Console.WriteLine(answer);
+        return answer;
     }
     
     private static List<List<Junction>> FindCircuits()
@@ -99,7 +103,60 @@ public class Program
             ExploreCircuit(next, visited);
     }
 
-   private static void ConnectJolts()
+    public static List<JunctionPair> GetPairs(int topN, bool orderPairs = true)
+    {
+        var pairs = new List<JunctionPair>();
+        for (int i = 0; i < _junctions.Count - 1; i++)
+        {
+            for (int j = i + 1; j < _junctions.Count; j++)
+            {
+                var j1 = _junctions[i];
+                var j2 = _junctions[j];
+                int distance = j1.Coordinate.DistanceTo(j2.Coordinate);
+                pairs.Add(new JunctionPair(j1, j2, distance));
+            }
+        }
+
+        if (!orderPairs) return pairs;
+        
+        pairs.Sort((p1, p2) => p1.Distance.CompareTo(p2.Distance));
+        
+        // Take enough pairs for duplicates
+        var topPairs = pairs
+            .Take(2 * topN)
+            .ToList();
+        
+        foreach (var pair in topPairs)
+        {
+            Console.WriteLine($"Connecting {pair.A.Name} with {pair.B.Name} (distance {pair.Distance})");
+        }
+
+        return topPairs;
+    }
+
+
+    private static void ReadFile(string fileName)
+    {
+        _junctions = new();
+        File.ReadAllLines(fileName).ToList().ForEach(line =>
+        {
+            var parts = line.Split(',').Select(int.Parse).ToArray();
+            _junctions.Add(new Junction()
+            {
+                Name = string.Join(",", parts),
+                Coordinate = new()
+                {
+                    X = parts[0],
+                    Y = parts[1],
+                    Z = parts[2]
+                },
+                ConnectedTo = []
+            });
+        });
+    }
+    
+    // Not used anymore
+    private static void ConnectJolts()
     {
         int minDistance = int.MaxValue, leftJunctionIdx = int.MaxValue, rightJunctionIdx = int.MaxValue;
         
@@ -125,56 +182,5 @@ public class Program
         
         _junctions[leftJunctionIdx].ConnectedTo.Add(_junctions[rightJunctionIdx]);
         _junctions[rightJunctionIdx].ConnectedTo.Add(_junctions[leftJunctionIdx]);
-    }
-   
-   
-    public static List<JunctionPair> GetTopPairs(int topN)
-    {
-        var pairs = new List<JunctionPair>();
-
-        for (int i = 0; i < _junctions.Count - 1; i++)
-        {
-            for (int j = i + 1; j < _junctions.Count; j++)
-            {
-                var j1 = _junctions[i];
-                var j2 = _junctions[j];
-                int distance = j1.Coordinate.DistanceTo(j2.Coordinate);
-                pairs.Add(new JunctionPair(j1, j2, distance));
-            }
-        }
-
-        // Sort descending by distance
-        pairs.Sort((p1, p2) => p1.Distance.CompareTo(p2.Distance));
-        
-        // Take enough pairs for duplicates
-        var topPairs = pairs
-            .Take(2 * topN)
-            .ToList();
-        foreach (var pair in topPairs)
-        {
-            Console.WriteLine($"Connecting {pair.A.Name} with {pair.B.Name} (distance {pair.Distance})");
-        }
-
-        return topPairs;
-    }
-
-
-    private static void ReadFile(string fileName)
-    {
-        File.ReadAllLines(fileName).ToList().ForEach(line =>
-        {
-            var parts = line.Split(',').Select(int.Parse).ToArray();
-            _junctions.Add(new Junction()
-            {
-                Name = string.Join(",", parts),
-                Coordinate = new()
-                {
-                    X = parts[0],
-                    Y = parts[1],
-                    Z = parts[2]
-                },
-                ConnectedTo = []
-            });
-        });
     }
 }
