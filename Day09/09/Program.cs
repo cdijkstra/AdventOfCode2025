@@ -11,8 +11,8 @@ public class Program
         Debug.Assert(Part1() == 50);
         _grid.Print();
         _grid.CreateConnectedGrid();
-        // ReadData("data.txt");
-        // _grid.CreateConnectedGrid();
+        ReadData("data.txt");
+        _grid.CreateConnectedGrid();
         // Console.WriteLine(Part1());
     }
     

@@ -140,45 +140,68 @@ class Grid
     {
         List<Coordinates> neighbors = new();
 
-        // Find the first left neighbor on the same row
-        for (var x = coors.X - 1; x >= MinX(); x--)
-        {
-            if (Data.Any(c => c.X == x && c.Y == coors.Y && c.Type == TileType.Red))
-            {
-                neighbors.Add(Data.Single(c => c.X == x && c.Y == coors.Y));
-                break;
-            }
-        }
+        // Assume DataSet is a HashSet<Coordinates> built from Data
+        var dataSet = new HashSet<Coordinates>(Data);
 
-        // Find the first right neighbor on the same row
-        for (var x = coors.X + 1; x <= MaxX(); x++)
+        var directions = new (long dx, long dy)[] { (-1, 0), (1, 0), (0, -1), (0, 1) };
+        foreach (var (dx, dy) in directions)
         {
-            if (Data.Any(c => c.X == x && c.Y == coors.Y && c.Type == TileType.Red))
+            var x = coors.X + dx;
+            var y = coors.Y + dy;
+            while (x >= MinX() && x <= MaxX() && y >= MinY() && y <= MaxY())
             {
-                neighbors.Add(Data.Single(c => c.X == x && c.Y == coors.Y));
-                break;
+                var neighbor = new Coordinates(TileType.Red, x, y);
+                if (dataSet.Contains(neighbor))
+                {
+                    neighbors.Add(neighbor);
+                    break;
+                }
+                x += dx;
+                y += dy;
             }
         }
-
-        // Find the first up neighbor in the same column
-        for (var y = coors.Y - 1; y >= MinY(); y--)
-        {
-            if (Data.Any(c => c.X == coors.X && c.Y == y && c.Type == TileType.Red))
-            {
-                neighbors.Add(Data.Single(c => c.X == coors.X && c.Y == y));
-                break;
-            }
-        }
-
-        // Find the first down neighbor in the same column
-        for (var y = coors.Y + 1; y <= MaxY(); y++)
-        {
-            if (Data.Any(c => c.X == coors.X && c.Y == y && c.Type == TileType.Red))
-            {
-                neighbors.Add(Data.Single(c => c.X == coors.X && c.Y == y));
-                break;
-            }
-        }
+        
+        // List<Coordinates> neighbors = new();
+        //
+        // // Find the first left neighbor on the same row
+        // for (var x = coors.X - 1; x >= MinX(); x--)
+        // {
+        //     if (Data.Any(c => c.X == x && c.Y == coors.Y && c.Type == TileType.Red))
+        //     {
+        //         neighbors.Add(Data.Single(c => c.X == x && c.Y == coors.Y));
+        //         break;
+        //     }
+        // }
+        //
+        // // Find the first right neighbor on the same row
+        // for (var x = coors.X + 1; x <= MaxX(); x++)
+        // {
+        //     if (Data.Any(c => c.X == x && c.Y == coors.Y && c.Type == TileType.Red))
+        //     {
+        //         neighbors.Add(Data.Single(c => c.X == x && c.Y == coors.Y));
+        //         break;
+        //     }
+        // }
+        //
+        // // Find the first up neighbor in the same column
+        // for (var y = coors.Y - 1; y >= MinY(); y--)
+        // {
+        //     if (Data.Any(c => c.X == coors.X && c.Y == y && c.Type == TileType.Red))
+        //     {
+        //         neighbors.Add(Data.Single(c => c.X == coors.X && c.Y == y));
+        //         break;
+        //     }
+        // }
+        //
+        // // Find the first down neighbor in the same column
+        // for (var y = coors.Y + 1; y <= MaxY(); y++)
+        // {
+        //     if (Data.Any(c => c.X == coors.X && c.Y == y && c.Type == TileType.Red))
+        //     {
+        //         neighbors.Add(Data.Single(c => c.X == coors.X && c.Y == y));
+        //         break;
+        //     }
+        // }
 
         return neighbors;
     }
