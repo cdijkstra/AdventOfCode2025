@@ -117,37 +117,28 @@ class Grid
             }
         }
     }
-    
-    private void FloodFillInterior()
+
+    private void FloodExterior()
     {
         Interior = new();
-        var filled = new HashSet<(long, long)>(Data.Select(c => (c.X, c.Y)));
-        var ranges = new List<HorizontalRange>();
 
         for (var y = MinY() + 1; y < MaxY(); y++)
         {
-            long? rangeStart = null;
-            for (var x = MinX() + 1; x < MaxX(); x++)
+            // Get all filled Xs for this row
+            var xs = Data.Where(c => c.Y == y).Select(c => c.X).OrderBy(x => x).ToList();
+            if (xs.Count < 2) continue; // Need at least two to form an interior
+
+            for (int i = 0; i < xs.Count - 1; i++)
             {
-                if (!filled.Contains((x, y)))
+                long fromX = xs[i] + 1;
+                long toX = xs[i + 1] - 1;
+                if (fromX <= toX)
                 {
-                    rangeStart ??= x;
+                    Interior.Add(new HorizontalRange(y, fromX, toX));
                 }
-                else
-                {
-                    if (rangeStart == null) continue;
-                    ranges.Add(new HorizontalRange(y, rangeStart.Value, x - 1));
-                    rangeStart = null;
-                }
-            }
-            if (rangeStart != null)
-            {
-                ranges.Add(new HorizontalRange(y, rangeStart.Value, MaxX() - 1));
             }
         }
-        Interior = ranges;
     }
-
 
     private List<Coordinates> FindNeighbors(Coordinates coors)
     {

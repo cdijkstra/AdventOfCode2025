@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection.Metadata.Ecma335;
 using _09;
 
 
@@ -11,6 +12,8 @@ public class Program
         Debug.Assert(Part2("testdata.txt") == 24);
         Console.WriteLine(Part1("data.txt"));
         Console.WriteLine(Part2("data.txt"));
+        
+        // 2930732777 too high
     }
     
     private static void ReadData(string fileName)
@@ -51,6 +54,7 @@ public class Program
         
         Console.WriteLine("Starting priority queue");
         var pq = new PriorityQueue<(Coordinates left, Coordinates right, long area), long>();
+        long maxLength = 0;
         
         for (var i = 0; i < redCoordinates.Count; i++)
         {
@@ -60,7 +64,9 @@ public class Program
                 var point2 = redCoordinates[j];
                 
                 var area = (Math.Abs(point1.X - point2.X) + 1) * (Math.Abs(point1.Y - point2.Y) + 1);
-                pq.Enqueue((point1, point2,area), -area);
+                if (area > 2930732777) continue;
+                Console.WriteLine($"Considering ({point1.X},{point1.Y}) and ({point2.X},{point2.Y}) with area {area}");
+                pq.Enqueue((point1, point2, area), -area);
             }
         }
 
@@ -70,43 +76,47 @@ public class Program
         while (pq.Count > 0)
         {
             var pair = pq.Dequeue();
+            // Console.WriteLine($"Processing ({pair.left.X},{pair.left.Y}) and ({pair.right.X},{pair.right.Y}) with area {pair.area}");
             long dx = pair.left.X - pair.right.X;
             long dy = pair.left.Y - pair.right.Y;
+        
+            if (dx == 0 || dy == 0) continue;
             
-            if (dx != 0 && dy != 0)
+            var minX = Math.Min(pair.left.X, pair.right.X);
+            var maxX = Math.Max(pair.left.X, pair.right.X);
+            var minY = Math.Min(pair.left.Y, pair.right.Y);
+            var maxY = Math.Max(pair.left.Y, pair.right.Y);
+            
+            var dataSet = new HashSet<(long, long)>(_grid.Data.Select(c => (c.X, c.Y)));
+            var interiorByY = _grid.Interior
+                .GroupBy(r => r.Y)
+                .ToDictionary(g => g.Key, g => g.ToList());
+        
+            bool allFilled = true;
+            for (var x = minX; x <= maxX && allFilled; x++)
             {
-                var minX = Math.Min(pair.left.X, pair.right.X);
-                var maxX = Math.Max(pair.left.X, pair.right.X);
-                var minY = Math.Min(pair.left.Y, pair.right.Y);
-                var maxY = Math.Max(pair.left.Y, pair.right.Y);
-            
-                bool allFilled = true;
-                for (var x = minX; x <= maxX && allFilled; x++)
+                for (var y = minY; y <= maxY && allFilled; y++)
                 {
-                    for (var y = minY; y <= maxY; y++)
-                    {
-                        // If we find any point not in Data or in Interior range, we stop
-                        if (!(_grid.Data.Any(c => c.X == x && c.Y == y) ||
-                            _grid.Interior.Any(inter => inter.Y == y && 
-                                                         inter.FromX <= x && 
-                                                         inter.ToX >= x)))
-                        {
-                            allFilled = false;
-                            break;
-                        }
-                    }
-                }
-                if (!allFilled) continue;
-
-                if (pair.area > maxArea)
-                {
-                    maxArea = pair.area;
-                    Console.WriteLine(maxArea);
+                    if (dataSet.Contains((x, y))) continue;
+        
+                    if (interiorByY.TryGetValue(y, out var ranges) &&
+                        ranges.Any(r => r.FromX <= x && r.ToX >= x)) continue;
+        
+                    allFilled = false;
+                    break;
                 }
             }
+
+            if (!allFilled) continue;
+
+            if (pair.area <= maxArea) continue;
+            
+            maxArea = pair.area;
+            Console.WriteLine(maxArea);
+            return maxArea;
         }
         
-        Console.WriteLine(maxArea);
-        return maxArea;
+        Console.WriteLine(maxLength);
+        return maxLength;
     }
 }
