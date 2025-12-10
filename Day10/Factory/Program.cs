@@ -20,7 +20,7 @@ public class Program
         Debug.Assert(Part2() == 33);
         ReadData("data.txt");
         // Console.WriteLine(Part1());
-        // Console.WriteLine(Part2());
+        Console.WriteLine(Part2());
     }
     
     private static void ReadData(string fileName)
@@ -158,7 +158,7 @@ public class Program
         if (nullVectors.Count == 0)
         {
             var rounded = x0.Map(v => Math.Round(v));
-            if ((A * rounded - b).L2Norm() < 1e-6)
+            if ((A * rounded - b).L2Norm() < 1e-5)
                 return rounded.Select(v => (int)v).ToArray();
 
             throw new Exception("No integer solution");
