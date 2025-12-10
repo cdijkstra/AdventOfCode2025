@@ -1,3 +1,5 @@
+using System.Collections;
+
 namespace _09;
 
 class Grid
@@ -9,7 +11,7 @@ class Grid
         Data = data;
     }
 
-    public bool[,] _grid;
+    public List<BitArray> _bitArray;
     
     public long MinX() => Data.Where(c => c.Type == TileType.Red).Min(c => c.X);
     public long MaxX() => Data.Where(c => c.Type == TileType.Red).Max(c => c.X);
@@ -18,11 +20,11 @@ class Grid
 
     public void Print()
     {
-        for (int y = 0; y < _grid.GetLength(1); y++)
+        for (int y = 0; y < _bitArray[0].Length; y++)
         {
-            for (int x = 0; x < _grid.GetLength(0); x++)
+            for (int x = 0; x < _bitArray.Count; x++)
             {
-                Console.Write(_grid[x, y] ? "#" : ".");
+                Console.Write(_bitArray[x][y] ? "#" : ".");
             }
             Console.WriteLine();
         }
@@ -101,21 +103,27 @@ class Grid
         Console.WriteLine($"MinX = {MinX()}, MaxX = {MaxX()}, MinY = {MinY()}, MaxY = {MaxY()}");
         
         // Create 2d bool grid
+        
         int width = (int)(MaxX() - MinX() + 3);
         int height = (int)(MaxY() - MinY() + 3);
         
-        _grid = new bool[width, height];
+        _bitArray = new List<BitArray>(height);
+        for (int i = 0; i < height; i++)
+        {
+            _bitArray.Add(new BitArray(width));
+        }
+        Console.WriteLine($"Grid size: {width}x{height}");
         foreach (var c in Data)
         {
             var x = (int)(c.X - MinX()) + 1;
             var y = (int)(c.Y - MinY()) + 1;
-            _grid[x, y] = true;
+            _bitArray[y][x] = true;
         }
         // Print();
         Console.WriteLine("Finished creating a grid");
         
         FloodFillInterior();
-        Print();
+        // Print();
         Console.WriteLine("Finished flooding grid");
     }
     
@@ -125,7 +133,7 @@ class Grid
         bool[] subset = new bool[length];
         for (long x = minX, i = 0; x <= maxX; x++, i++)
         {
-            subset[i] = _grid[x, y];
+            subset[i] = _bitArray[(int)y][(int)x];
         }
         return subset;
     }
@@ -136,15 +144,15 @@ class Grid
         bool[] subset = new bool[length];
         for (long y = minY, i = 0; y <= maxY; y++, i++)
         {
-            subset[i] = _grid[x, y];
+            subset[i] = _bitArray[(int)y][(int)x];
         }
         return subset;
     }
     
     private void FloodFillInterior()
     {
-        int width = _grid.GetLength(0);
-        int height = _grid.GetLength(1);
+        int height = _bitArray.Count;
+        int width = _bitArray[0].Length;
         bool[,] visited = new bool[width, height];
     
         var queue = new Queue<(int x, int y)>();
@@ -163,7 +171,7 @@ class Grid
                 int ny = y + dy[dir];
                 if (nx >= 0 && ny >= 0 && nx < width && ny < height)
                 {
-                    if (!_grid[nx, ny] && !visited[nx, ny])
+                    if (!_bitArray[ny][nx] && !visited[nx, ny])
                     {
                         visited[nx, ny] = true;
                         queue.Enqueue((nx, ny));
@@ -178,7 +186,7 @@ class Grid
             for (int y = 0; y < height; y++)
             {
                 if (!visited[x, y])
-                    _grid[x, y] = true;
+                    _bitArray[y][x] = true;
             }
         }
     }
