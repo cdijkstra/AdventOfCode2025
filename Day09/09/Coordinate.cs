@@ -1,20 +1,12 @@
 namespace _09;
 
-enum TileType
-{
-    Red = '#',
-    Green = 'X'
-}
-
 class Coordinates
 {
-    public TileType Type { get; }
-    public long X { get; set; }
-    public long Y { get; set; }
+    public int X { get; set; }
+    public int Y { get; set; }
 
-    public Coordinates(TileType type, long x, long y)
+    public Coordinates(int x, int y)
     {
-        Type = type;
         X = x;
         Y = y;
     }
@@ -22,11 +14,11 @@ class Coordinates
     public override bool Equals(object? obj)
     {
         if (obj is not Coordinates other) return false;
-        return X == other.X && Y == other.Y && Type == other.Type;
+        return X == other.X && Y == other.Y;
     }
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(X, Y, Type);
+        return HashCode.Combine(X, Y);
     }
 }

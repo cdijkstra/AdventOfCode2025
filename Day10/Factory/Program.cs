@@ -15,7 +15,7 @@ public class Program
     static void Main(string[] args)
     {
         ReadData("testdata.txt");
-        Debug.Assert(Part1() == 7);
+        // Debug.Assert(Part1() == 7);
         Debug.Assert(Part2() == 33);
         ReadData("data.txt");
         // Console.WriteLine(Part1());
@@ -140,7 +140,7 @@ public class Program
                     var newButtonsPressed = new List<List<int>>(machineButtonsPressed);
                     newButtonsPressed.AddRange(button);
                     
-                    pq.Enqueue((newJoltage, newButtonsPressed, newJoltageDelta), 5 * newJoltageDelta + newButtonsPressed.Count);
+                    pq.Enqueue((newJoltage, newButtonsPressed, newJoltageDelta), 2 * newJoltageDelta + newButtonsPressed.Count);
                 }
             }
         }

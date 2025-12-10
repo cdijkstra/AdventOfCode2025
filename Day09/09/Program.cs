@@ -8,9 +8,9 @@ public class Program
     static void Main(string[] args)
     {
         // Debug.Assert(Part1("testdata.txt") == 50);
-        // Debug.Assert(Part2("testdata.txt") == 24);
+        Debug.Assert(Part2("testdata.txt") == 24);
         // Console.WriteLine(Part1("data.txt"));
-        Console.WriteLine(Part2("data.txt"));
+        // Console.WriteLine(Part2("data.txt"));
         
         // 2930732777 too high
     }
@@ -19,7 +19,7 @@ public class Program
     {
         var nums = File.ReadAllLines(fileName)
             .Select(line => line.Split(','))
-            .Select(parts => new Coordinates(TileType.Red, int.Parse(parts[0]), int.Parse(parts[1])))
+            .Select(parts => new Coordinates(int.Parse(parts[0]), int.Parse(parts[1])))
             .ToList();
         _grid = new Grid(nums);
     }
@@ -47,17 +47,19 @@ public class Program
         ReadData(fileName);
 
         _grid.CreateConnectedGrid();
-        var reds = _grid.Data
-            .Where(c => c.Type == TileType.Red)
-            .ToList();
+        var reds = _grid.Data;
         
         var pq = new PriorityQueue<(Coordinates left, Coordinates right, long area), long>();
         for (var i = 0; i < reds.Count; i++)
         {
-            var point1 = reds[i];
+            var point1 = new Coordinates(reds[i].X, reds[i].Y);
+            point1.X -= _grid.MinX();
+            point1.Y -= _grid.MinY();
             for (var j = 0; j < reds.Count; j++)
             {
-                var point2 = reds[j];
+                var point2 = new Coordinates(reds[j].X, reds[j].Y);
+                point2.X -= _grid.MinX();
+                point2.Y -= _grid.MinY();
                 
                 var area = (Math.Abs(point1.X - point2.X) + 1) * (Math.Abs(point1.Y - point2.Y) + 1);
                 pq.Enqueue((point1, point2, area), -area);
@@ -74,10 +76,10 @@ public class Program
         
             if (dx == 0 || dy == 0) continue;
             
-            var minX = Math.Min(pair.left.X, pair.right.X) - _grid.MinX() + 1;
-            var maxX = Math.Max(pair.left.X, pair.right.X) - _grid.MinX() + 1;
-            var minY = Math.Min(pair.left.Y, pair.right.Y) - _grid.MinY() + 1;
-            var maxY = Math.Max(pair.left.Y, pair.right.Y) - _grid.MinY() + 1;
+            var minX = Math.Min(pair.left.X, pair.right.X);
+            var maxX = Math.Max(pair.left.X, pair.right.X);
+            var minY = Math.Min(pair.left.Y, pair.right.Y);
+            var maxY = Math.Max(pair.left.Y, pair.right.Y);
             
             // Check if borders contain any element that is false
             if (_grid.GetRowSubset(minX, maxX, minY).Any(el => el == false) ||

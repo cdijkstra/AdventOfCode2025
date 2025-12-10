@@ -4,23 +4,23 @@ namespace _09;
 
 class Grid
 {
-    public List<Coordinates> Data = new();
     public Grid(List<Coordinates> data)
     {
-        Data = new();
         Data = data;
     }
-
-    public List<BitArray> _bitArray;
     
-    public long MinX() => Data.Where(c => c.Type == TileType.Red).Min(c => c.X);
-    public long MaxX() => Data.Where(c => c.Type == TileType.Red).Max(c => c.X);
-    public long MinY() => Data.Where(c => c.Type == TileType.Red).Min(c => c.Y);
-    public long MaxY() => Data.Where(c => c.Type == TileType.Red).Max(c => c.Y);
+    public List<Coordinates> Data = new();
+    public List<BitArray> _bitArray;
+    private List<(Coordinates from, Coordinates to)> _connections = [];
+    
+    public int MinX() => Data.Min(c => c.X);
+    public int MaxX() => Data.Max(c => c.X);
+    public int MinY() => Data.Min(c => c.Y);
+    public int MaxY() => Data.Max(c => c.Y);
 
     public void Print()
     {
-        for (int y = 0; y < _bitArray[0].Length; y++)
+        for (int y = 0; y < _bitArray[0].Count; y++)
         {
             for (int x = 0; x < _bitArray.Count; x++)
             {
@@ -32,100 +32,100 @@ class Grid
 
     public void CreateConnectedGrid()
     {
-        var entry = Data.First();
-        List<Coordinates> visited = [];
-
-        bool finised = false;
-        while (!finised)
+        _connections = [];
+        _bitArray = new List<BitArray>();
+        var width = MaxX() - MinX() + 1;
+        var height = MaxY() - MinY() + 1;
+        
+        for (var x = 0; x < width; x++)
         {
-            visited.Add(entry);
-            // Console.WriteLine($"Visiting {entry.X}, {entry.Y}");
-            var neighbors = FindNeighbors(entry);
-            switch (neighbors.Count)
+            var array = new BitArray((int)height);
+            for (var y = 0; y < height; y++)
             {
-                case 0:
-                    Console.WriteLine($"No neighbors found for: {entry.X}, {entry.Y}");
-                    return;
-                case 1:
-                    Console.WriteLine($"Neighbor found: {neighbors[0].X}, {neighbors[0].Y}");
-                    AddGreen(neighbors[0], entry);
-                    
-                    entry = neighbors[0];
-                    break;
-                case 2:
+                if (Data.Any(coord => coord.X == x + MinX() && coord.Y == y + MinY()))
+                    array[y] = true;
+            }
+            _bitArray.Add(array);
+        }
+        
+        Print();
+        // Now create the connect grid
+        var firstEntry = (from x in Enumerable.Range(0, _bitArray.Count)
+            from y in Enumerable.Range(0, _bitArray[x].Count)
+            where _bitArray[x][y]
+            select new Coordinates(x, y)).FirstOrDefault();
+        
+        var queue = new Queue<Coordinates>();
+        queue.Enqueue(firstEntry);
+        
+        while (queue.Count > 0)
+        {
+            var entry = queue.Dequeue();
+            var validNeighbors = GetValidNeighbors(entry);
+            if (validNeighbors.Count == 0) continue;
+            foreach (var neighbor in validNeighbors)
+            {
+                if (neighbor.X != entry.X)
                 {
-                    var newNeighbors = neighbors
-                        .Where(n => !visited.Any(v => v.X == n.X && v.Y == n.Y))
-                        .ToList();
-                
-                    Console.Write($"2 neighbors found for {entry.X}, {entry.Y}; unique = " + newNeighbors.Count());
-                    foreach (var neighbor in newNeighbors)
+                    var step = Math.Sign(neighbor.X - entry.X);
+                    for (var dx = entry.X + step; dx != neighbor.X; dx += step)
                     {
-                        Console.WriteLine($"({neighbor.X}, {neighbor.Y})");
+                        _bitArray[dx][entry.Y] = true;
                     }
-                
-                    if (newNeighbors.Count == 0)
-                    {
-                        Console.WriteLine($"No new neighbors found, finishing at; {entry.X}, {entry.Y}");
-                        // Find the neighbor that is not connected by a green line and add it
-                        foreach (var neighbor in neighbors)
-                        {
-                            // Check if a green connection exists
-                            bool hasGreen = Data.Any(c =>
-                                ((c.X == neighbor.X && c.Y == neighbor.Y) || (c.X == entry.X && c.Y == entry.Y)) &&
-                                c.Type == TileType.Green);
-
-                            if (!hasGreen)
-                            {
-                                AddGreen(neighbor, entry);
-                            }
-                        }
-                        finised = true;
-                    }
-                    else
-                    {
-                        AddGreen(newNeighbors[0], entry);
-                        entry = newNeighbors[0];
-                    }
-
-                    break;
                 }
-                case 3:
-                    var newwNeighbors = neighbors
-                        .Where(n => !visited.Any(v => v.X == n.X && v.Y == n.Y))
-                        .ToList();
-                    Console.Write($"3 neighbors found for {entry.X}, {entry.Y}; unique = " + newwNeighbors.Count);
-                    return;
+                
+                if (neighbor.Y != entry.Y)
+                {
+                    var step = Math.Sign(neighbor.Y - entry.Y);
+                    for (var dy = entry.Y + step; dy != neighbor.Y; dy += step)
+                    {
+                        _bitArray[entry.X][dy] = true;
+                    }
+                }
+                
+                _connections.Add((entry, neighbor));
+                queue.Enqueue(neighbor);
+            }
+            
+            // Find neighbors
+        }
+        Print();
+        
+        // Console.WriteLine("Finished creating a grid");
+        //
+        // FloodFillInterior();
+        // // Print();
+        // Console.WriteLine("Finished flooding grid");
+    }
+    
+    private List<Coordinates> GetValidNeighbors(Coordinates entry)
+    {
+        var neighbors = new List<Coordinates>();
+        int[] dx = { 0, 1, 0, -1 };
+        int[] dy = { 1, 0, -1, 0 };
+
+        for (int dir = 0; dir < 4; dir++)
+        {
+            int nx = entry.X;
+            int ny = entry.Y;
+            while (true)
+            {
+                nx += dx[dir];
+                ny += dy[dir];
+                if (nx < 0 || ny < 0 || nx >= _bitArray.Count || ny >= _bitArray[0].Count)
+                    break;
+                var neighbor = new Coordinates(nx, ny);
+                if (_bitArray[nx][ny])
+                {
+                    if (!_connections.Contains((entry, neighbor)))
+                        neighbors.Add(neighbor);
+                    break; // Stop at the first neighbor found in this direction
+                }
             }
         }
-        
-        Console.WriteLine("Now creating a grid");
-        Console.WriteLine($"MinX = {MinX()}, MaxX = {MaxX()}, MinY = {MinY()}, MaxY = {MaxY()}");
-        
-        // Create 2d bool grid
-        
-        int width = (int)(MaxX() - MinX() + 3);
-        int height = (int)(MaxY() - MinY() + 3);
-        
-        _bitArray = new List<BitArray>(height);
-        for (int i = 0; i < height; i++)
-        {
-            _bitArray.Add(new BitArray(width));
-        }
-        Console.WriteLine($"Grid size: {width}x{height}");
-        foreach (var c in Data)
-        {
-            var x = (int)(c.X - MinX()) + 1;
-            var y = (int)(c.Y - MinY()) + 1;
-            _bitArray[y][x] = true;
-        }
-        // Print();
-        Console.WriteLine("Finished creating a grid");
-        
-        FloodFillInterior();
-        // Print();
-        Console.WriteLine("Finished flooding grid");
+        return neighbors;
     }
+    
     
     public bool[] GetRowSubset(long minX, long maxX, long y)
     {
@@ -133,18 +133,18 @@ class Grid
         bool[] subset = new bool[length];
         for (long x = minX, i = 0; x <= maxX; x++, i++)
         {
-            subset[i] = _bitArray[(int)y][(int)x];
+            subset[i] = _bitArray[(int)x][(int)y];
         }
         return subset;
     }
-    
+
     public bool[] GetColumnSubset(long x, long minY, long maxY)
     {
         var length = maxY - minY + 1;
         bool[] subset = new bool[length];
         for (long y = minY, i = 0; y <= maxY; y++, i++)
         {
-            subset[i] = _bitArray[(int)y][(int)x];
+            subset[i] = _bitArray[(int)x][(int)y];
         }
         return subset;
     }
@@ -191,61 +191,38 @@ class Grid
         }
     }
     
-    
-    private void AddGreen(Coordinates neighbor, Coordinates entry)
-    {
-        long dx = neighbor.X - entry.X;
-        long dy = neighbor.Y - entry.Y;
 
-        if (dx != 0 && dy == 0)
-        {
-            int step = Math.Sign(dx);
-            for (var x = entry.X + step; x != neighbor.X; x += step)
-            {
-                Data.Add(new Coordinates(TileType.Green, x, entry.Y));
-            }
-        }
-        else if (dy != 0 && dx == 0)
-        {
-            int step = Math.Sign(dy);
-            for (var y = entry.Y + step; y != neighbor.Y; y += step)
-            {
-                Data.Add(new Coordinates(TileType.Green, entry.X, y));
-            }
-        }
-    }
-
-    private List<Coordinates> FindNeighbors(Coordinates coors)
-    {
-        var neighbors = new List<Coordinates>();
-        var leftNeighbor = Data
-            .Where(c => c.Y == coors.Y && c.X < coors.X && c.Type == TileType.Red)
-            .OrderByDescending(c => c.X)
-            .FirstOrDefault();
-
-        var rightNeighbor = Data
-            .Where(c => c.Y == coors.Y && c.X > coors.X && c.Type == TileType.Red)
-            .OrderBy(c => c.X)
-            .FirstOrDefault();
-        
-        var upNeighbor = Data
-            .Where(c => c.X == coors.X && c.Y > coors.Y && c.Type == TileType.Red)
-            .OrderByDescending(c => c.X)
-            .FirstOrDefault();
-
-        var downNeighbor = Data
-            .Where(c => c.X == coors.X && c.Y < coors.Y && c.Type == TileType.Red)
-            .OrderBy(c => c.X)
-            .FirstOrDefault();
-
-        if (leftNeighbor != null) neighbors.Add(leftNeighbor);
-        if (rightNeighbor != null) neighbors.Add(rightNeighbor);
-        if (upNeighbor != null) neighbors.Add(upNeighbor);
-        if (downNeighbor != null) neighbors.Add(downNeighbor);
-        
-        Console.WriteLine($"Found {neighbors.Count} neighbors for {coors.X}, {coors.Y}");
-
-        return neighbors;
-    }
+    // private List<Coordinates> FindNeighbors(Coordinates coors)
+    // {
+    //     var neighbors = new List<Coordinates>();
+    //     var leftNeighbor = Data
+    //         .Where(c => c.Y == coors.Y && c.X < coors.X && c.Type == TileType.Red)
+    //         .OrderByDescending(c => c.X)
+    //         .FirstOrDefault();
+    //
+    //     var rightNeighbor = Data
+    //         .Where(c => c.Y == coors.Y && c.X > coors.X && c.Type == TileType.Red)
+    //         .OrderBy(c => c.X)
+    //         .FirstOrDefault();
+    //     
+    //     var upNeighbor = Data
+    //         .Where(c => c.X == coors.X && c.Y > coors.Y && c.Type == TileType.Red)
+    //         .OrderByDescending(c => c.X)
+    //         .FirstOrDefault();
+    //
+    //     var downNeighbor = Data
+    //         .Where(c => c.X == coors.X && c.Y < coors.Y && c.Type == TileType.Red)
+    //         .OrderBy(c => c.X)
+    //         .FirstOrDefault();
+    //
+    //     if (leftNeighbor != null) neighbors.Add(leftNeighbor);
+    //     if (rightNeighbor != null) neighbors.Add(rightNeighbor);
+    //     if (upNeighbor != null) neighbors.Add(upNeighbor);
+    //     if (downNeighbor != null) neighbors.Add(downNeighbor);
+    //     
+    //     Console.WriteLine($"Found {neighbors.Count} neighbors for {coors.X}, {coors.Y}");
+    //
+    //     return neighbors;
+    // }
     
 }
