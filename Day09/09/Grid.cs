@@ -37,19 +37,21 @@ class Grid
         var width = MaxX() - MinX() + 1;
         var height = MaxY() - MinY() + 1;
         
+        Console.WriteLine("Creating the grid");
+        var coordSet = new HashSet<(int x, int y)>(Data.Select(c => (c.X, c.Y)));
         for (var x = 0; x < width; x++)
         {
-            var array = new BitArray((int)height);
+            var array = new BitArray(height);
             for (var y = 0; y < height; y++)
             {
-                if (Data.Any(coord => coord.X == x + MinX() && coord.Y == y + MinY()))
+                if (coordSet.Contains((x + MinX(), y + MinY())))
                     array[y] = true;
             }
             _bitArray.Add(array);
         }
         
-        Print();
-        // Now create the connect grid
+        // Print();
+        Console.WriteLine("Filling the grid");
         var firstEntry = (from x in Enumerable.Range(0, _bitArray.Count)
             from y in Enumerable.Range(0, _bitArray[x].Count)
             where _bitArray[x][y]
@@ -91,11 +93,7 @@ class Grid
         }
         Print();
         
-        // Console.WriteLine("Finished creating a grid");
-        //
-        // FloodFillInterior();
-        // // Print();
-        // Console.WriteLine("Finished flooding grid");
+        Console.WriteLine("Finished creating a grid");
     }
     
     private List<Coordinates> GetValidNeighbors(Coordinates entry)

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
+using MathNet.Numerics.LinearAlgebra;
 
 public class Machine
 {
@@ -19,7 +20,7 @@ public class Program
         Debug.Assert(Part2() == 33);
         ReadData("data.txt");
         // Console.WriteLine(Part1());
-        Console.WriteLine(Part2());
+        // Console.WriteLine(Part2());
     }
     
     private static void ReadData(string fileName)
@@ -98,53 +99,97 @@ public class Program
     
     private static long Part2()
     {
+        // Use linear algebra to sovle this; Ax = B
+        // [.##.]         (3) (1,3) (2) (2,3) (0,2) (0,1)      {3,5,4,7}
+        // buttons:        0   1     2   3     4     5
+        // Can be read as (with coefficient x0,x1,x2,x3,x4,x5 for the button presses)
+        // e + f = 3
+        // b + f = 5
+        // c + d + e = 4
+        // a + b + d = 7
+        // Ax = B
+        // [ 0 0 0 0 1 1][x_0] = [3]
+        // [ 0 1 0 0 0 1][x_1] = [5]
+        // [ 0 0 1 1 1 0][x_2] = [4]
+        // [ 1 1 0 1 0 0][x_3] = [7]
+        //               [x_4]
+        //               [x_5]
+        // 4 equations; 6 variables. Underdetermined system, damn.
+
         var totalButtonsPressed = 0;
-        var machineIdx = 0;
         foreach (var machine in _machines)
         {
-            Console.WriteLine($"Considering machine {++machineIdx}; buttons = {totalButtonsPressed}");
-            var currentJoltage = new int[machine.JoltageRequirements.Count]; // Defaults to zeros
-            var initialJoltageDelta = machine.JoltageRequirements
-                .Zip(currentJoltage, (required, initial) => Math.Abs(required - initial))
-                .Sum();
-
-            var pq = new PriorityQueue<(int[] joltages, List<List<int>> buttonsPressed, int joltageDelta), int>();
-            machine.Buttons.ForEach(but => pq.Enqueue((currentJoltage, new(), initialJoltageDelta), initialJoltageDelta));
-            while (pq.Count > 0)
+            var aHeight = machine.Buttons.Count;
+            var aLength = machine.JoltageRequirements.Count;
+            var aData = new double[aLength, aHeight];
+            for (var buttonIdx = 0; buttonIdx != machine.Buttons.Count; buttonIdx++)
             {
-                var (joltage, machineButtonsPressed, joltageDelta) = pq.Dequeue();
-                if (joltageDelta == 0)
+                machine.Buttons[buttonIdx].ForEach(num =>
                 {
-                    totalButtonsPressed += machineButtonsPressed.Count;
-                    break;
-                }
+                    aData[num, buttonIdx] = 1;
+                });
+            }
+            var bData = machine.JoltageRequirements.Select(j => (double)j).ToArray();
+            var buttonsPressed = SolveIntegerSystem(aData, bData);
+            totalButtonsPressed += buttonsPressed.Sum();
+        }
+        return totalButtonsPressed;
+    }
+    
+    public static int[] SolveIntegerSystem(double[,] aData, double[] bData)
+    {
+        // This method was genered by ChatGTP, I admit...
+        
+        var A = Matrix<double>.Build.DenseOfArray(aData);
+        var b = Vector<double>.Build.Dense(bData);
 
-                foreach (var button in machine.Buttons)
+        // STEP 1 — Particular (real) solution x0
+        var x0 = A.PseudoInverse() * b;
+
+        // STEP 2 — Compute nullspace using SVD
+        var svd = A.Svd(true);
+
+        double tol = 1e-10;
+        var nullVectors = Enumerable.Range(0, svd.S.Count)
+            .Where(i => svd.S[i] < tol)
+            .Select(i => svd.VT.Row(i).ToArray())
+            .ToList();
+
+        if (nullVectors.Count == 0)
+        {
+            var rounded = x0.Map(v => Math.Round(v));
+            if ((A * rounded - b).L2Norm() < 1e-6)
+                return rounded.Select(v => (int)v).ToArray();
+
+            throw new Exception("No integer solution");
+        }
+
+        var n = Vector<double>.Build.Dense(nullVectors[0]);
+
+        var bestSum = double.MaxValue;
+        double[] best = null;
+
+        for (int t = -500; t <= 500; t++)
+        {
+            var x = x0 + n * t;
+            var xi = x.Map(v => Math.Round(v));
+
+            if (xi.Any(v => v < 0))
+                continue;
+
+            if ((A * Vector<double>.Build.DenseOfEnumerable(xi.Select(v => (double)v)) - b).L2Norm() < 1e-6)
+            {
+                var sum = xi.Sum();
+                if (sum < bestSum)
                 {
-                    var newJoltage = (int[])joltage.Clone(); // Switch bits at locations of the buttons
-                    foreach (var idx in button)
-                    {
-                        newJoltage[idx]++;
-                    }
-                    
-                    bool anyCurrentAboveRequired = machine.JoltageRequirements
-                        .Zip(newJoltage, (required, current) => current > required)
-                        .Any(isAbove => isAbove);
-
-                    if (anyCurrentAboveRequired) continue;
-                    
-                    var newJoltageDelta = machine.JoltageRequirements
-                        .Zip(newJoltage, (required, current) => Math.Abs(required - current))
-                        .Sum();
-
-                    var newButtonsPressed = new List<List<int>>(machineButtonsPressed);
-                    newButtonsPressed.AddRange(button);
-                    
-                    pq.Enqueue((newJoltage, newButtonsPressed, newJoltageDelta), 2 * newJoltageDelta + newButtonsPressed.Count);
+                    bestSum = sum;
+                    best = xi.ToArray();
                 }
             }
         }
 
-        return totalButtonsPressed;
-    }
-}
+        if (best == null)
+            throw new Exception("No integer solution found");
+        
+        return best.Select(v => (int)Math.Round(v)).ToArray();
+    }}
