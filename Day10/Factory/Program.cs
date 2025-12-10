@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
-using MathNet.Numerics.LinearAlgebra;
+using Google.OrTools.LinearSolver;
 
 public class Machine
 {
@@ -13,16 +13,17 @@ public class Program
 {
     private static List<Machine> _machines = new();
     private static readonly int PrioWeightButtons = 5;
+
     static void Main(string[] args)
     {
         ReadData("testdata.txt");
-        // Debug.Assert(Part1() == 7);
+        Debug.Assert(Part1() == 7);
         Debug.Assert(Part2() == 33);
         ReadData("data.txt");
-        // Console.WriteLine(Part1());
+        Console.WriteLine(Part1());
         Console.WriteLine(Part2());
     }
-    
+
     private static void ReadData(string fileName)
     {
         _machines.Clear();
@@ -31,21 +32,21 @@ public class Program
             // Extract content in []
             var machine = new Machine();
             var squareBracket = Regex.Match(line, @"\[(.*?)\]").Groups[1].Value;
-            var boolArr = new bool[squareBracket.Length];
-            for (int i = 0; i < squareBracket.Length; i++)
-            {
-                boolArr[i] = squareBracket[i] == '#';
-            }
-            machine.DesiredDiagram = boolArr;
-            
+            machine.DesiredDiagram = squareBracket.Select(c => c == '#').ToArray();
+
             // Extract all contents in ()
             machine.Buttons = Regex.Matches(line, @"\((.*?)\)")
-                .Select(m => m.Groups[1].Value)
+                .Select(m => m.Groups[1].Value.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
                 .Select(s => s.Split(',').Select(int.Parse).ToList())
                 .ToList();
-            
+
             // Extract content in {}
-            machine.JoltageRequirements = Regex.Match(line, @"\{(.*?)\}").Groups[1].Value.Split(",").Select(int.Parse).ToList();
+            machine.JoltageRequirements = Regex.Match(line, @"\{(.*?)\}")
+                .Groups[1].Value.Split(',')
+                .Select(s => int.Parse(s.Trim()))
+                .ToList();
+
             _machines.Add(machine);
         }
     }
@@ -88,15 +89,16 @@ public class Program
 
                     var newButtonsPressed = new List<List<int>>(machineButtonsPressed);
                     newButtonsPressed.AddRange(button);
-                    
-                    pq.Enqueue((newDiagram, newButtonsPressed, newBitsOff), newBitsOff + PrioWeightButtons * newButtonsPressed.Count);
+
+                    pq.Enqueue((newDiagram, newButtonsPressed, newBitsOff),
+                        newBitsOff + PrioWeightButtons * newButtonsPressed.Count);
                 }
             }
         }
 
         return totalButtonsPressed;
     }
-    
+
     private static long Part2()
     {
         // Use linear algebra to sovle this; Ax = B
@@ -124,72 +126,43 @@ public class Program
             var aData = new double[aLength, aHeight];
             for (var buttonIdx = 0; buttonIdx != machine.Buttons.Count; buttonIdx++)
             {
-                machine.Buttons[buttonIdx].ForEach(num =>
-                {
-                    aData[num, buttonIdx] = 1;
-                });
+                machine.Buttons[buttonIdx].ForEach(num => { aData[num, buttonIdx] = 1; });
             }
+
             var bData = machine.JoltageRequirements.Select(j => (double)j).ToArray();
             var buttonsPressed = SolveIntegerSystem(aData, bData);
             totalButtonsPressed += buttonsPressed.Sum();
         }
+
         return totalButtonsPressed;
     }
-    
+
     public static int[] SolveIntegerSystem(double[,] aData, double[] bData)
     {
-        // This method was genered by ChatGTP, I admit...
-        
-        var A = Matrix<double>.Build.DenseOfArray(aData);
-        var b = Vector<double>.Build.Dense(bData);
+        // Make use of external library (Google.OrTools.LinearSolver) to solve the linear systems
+        // https://developers.google.com/optimization
+        int rows = aData.GetLength(0);
+        int cols = aData.GetLength(1);
+        var solver = Solver.CreateSolver("SCIP"); // Symbolic Constraint Integer Programming solver
+        var x = new Variable[cols];
+        for (var j = 0; j < cols; j++)
+            x[j] = solver.MakeIntVar(0.0, double.PositiveInfinity, $"x{j}");
 
-        // STEP 1 — Particular (real) solution x0
-        var x0 = A.PseudoInverse() * b;
-
-        // STEP 2 — Compute nullspace using SVD
-        var svd = A.Svd(true);
-
-        double tol = 1e-10;
-        var nullVectors = Enumerable.Range(0, svd.S.Count)
-            .Where(i => svd.S[i] < tol)
-            .Select(i => svd.VT.Row(i).ToArray())
-            .ToList();
-
-        if (nullVectors.Count == 0)
+        for (var i = 0; i < rows; i++)
         {
-            var rounded = x0.Map(v => Math.Round(v));
-            if ((A * rounded - b).L2Norm() < 1e-5)
-                return rounded.Select(v => (int)v).ToArray();
-
-            throw new Exception("No integer solution");
+            var ct = solver.MakeConstraint(bData[i], bData[i]);
+            for (int j = 0; j < cols; j++)
+                ct.SetCoefficient(x[j], aData[i, j]);
         }
 
-        var n = Vector<double>.Build.Dense(nullVectors[0]);
+        var objective = solver.Objective();
+        for (var j = 0; j < cols; j++)
+            objective.SetCoefficient(x[j], 1);
+        objective.SetMinimization();
 
-        var bestSum = double.MaxValue;
-        double[] best = null;
+        var resultStatus = solver.Solve();
+        if (resultStatus != Solver.ResultStatus.OPTIMAL) throw new Exception("No integer solution found");
 
-        for (int t = -500; t <= 500; t++)
-        {
-            var x = x0 + n * t;
-            var xi = x.Map(v => Math.Round(v));
-
-            if (xi.Any(v => v < 0))
-                continue;
-
-            if ((A * Vector<double>.Build.DenseOfEnumerable(xi.Select(v => (double)v)) - b).L2Norm() < 1e-6)
-            {
-                var sum = xi.Sum();
-                if (sum < bestSum)
-                {
-                    bestSum = sum;
-                    best = xi.ToArray();
-                }
-            }
-        }
-
-        if (best == null)
-            throw new Exception("No integer solution found");
-        
-        return best.Select(v => (int)Math.Round(v)).ToArray();
-    }}
+        return x.Select(v => (int)v.SolutionValue()).ToArray();
+    }
+}
