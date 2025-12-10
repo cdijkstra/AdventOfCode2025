@@ -16,8 +16,10 @@ public class Program
     {
         ReadData("testdata.txt");
         Debug.Assert(Part1() == 7);
+        Debug.Assert(Part2() == 33);
         ReadData("data.txt");
-        Console.WriteLine(Part1());
+        // Console.WriteLine(Part1());
+        Console.WriteLine(Part2());
     }
     
     private static void ReadData(string fileName)
@@ -87,6 +89,58 @@ public class Program
                     newButtonsPressed.AddRange(button);
                     
                     pq.Enqueue((newDiagram, newButtonsPressed, newBitsOff), newBitsOff + PrioWeightButtons * newButtonsPressed.Count);
+                }
+            }
+        }
+
+        return totalButtonsPressed;
+    }
+    
+    private static long Part2()
+    {
+        var totalButtonsPressed = 0;
+        var machineIdx = 0;
+        foreach (var machine in _machines)
+        {
+            Console.WriteLine($"Considering machine {++machineIdx}; buttons = {totalButtonsPressed}");
+            var currentJoltage = new int[machine.JoltageRequirements.Count]; // Defaults to zeros
+            var initialJoltageDelta = machine.JoltageRequirements
+                .Zip(currentJoltage, (required, initial) => Math.Abs(required - initial))
+                .Sum();
+
+            var pq = new PriorityQueue<(int[] joltages, List<List<int>> buttonsPressed, int joltageDelta), int>();
+            machine.Buttons.ForEach(but => pq.Enqueue((currentJoltage, new(), initialJoltageDelta), initialJoltageDelta));
+            while (pq.Count > 0)
+            {
+                var (joltage, machineButtonsPressed, joltageDelta) = pq.Dequeue();
+                if (joltageDelta == 0)
+                {
+                    totalButtonsPressed += machineButtonsPressed.Count;
+                    break;
+                }
+
+                foreach (var button in machine.Buttons)
+                {
+                    var newJoltage = (int[])joltage.Clone(); // Switch bits at locations of the buttons
+                    foreach (var idx in button)
+                    {
+                        newJoltage[idx]++;
+                    }
+                    
+                    bool anyCurrentAboveRequired = machine.JoltageRequirements
+                        .Zip(newJoltage, (required, current) => current > required)
+                        .Any(isAbove => isAbove);
+
+                    if (anyCurrentAboveRequired) continue;
+                    
+                    var newJoltageDelta = machine.JoltageRequirements
+                        .Zip(newJoltage, (required, current) => Math.Abs(required - current))
+                        .Sum();
+
+                    var newButtonsPressed = new List<List<int>>(machineButtonsPressed);
+                    newButtonsPressed.AddRange(button);
+                    
+                    pq.Enqueue((newJoltage, newButtonsPressed, newJoltageDelta), 5 * newJoltageDelta + newButtonsPressed.Count);
                 }
             }
         }
