@@ -8,6 +8,8 @@ class Grid
         Data = new();
         Data = data;
     }
+
+    public bool[,] _grid;
     
     public long MinX() => Data.Where(c => c.Type == TileType.Red).Min(c => c.X);
     public long MaxX() => Data.Where(c => c.Type == TileType.Red).Max(c => c.X);
@@ -16,14 +18,11 @@ class Grid
 
     public void Print()
     {
-        // Create grid from MinX - 1 to MaxX + 1, same for Y
-        for (var idx = MinX() - 1; idx != MaxX() + 1; idx++)
+        for (int y = 0; y < _grid.GetLength(1); y++)
         {
-            for (var idy = MinY() - 1; idy != MaxY() + 1; idy++)
+            for (int x = 0; x < _grid.GetLength(0); x++)
             {
-                Console.Write(    Data.FirstOrDefault(c => c.X == idx && c.Y == idy) is { } found
-                    ? (char)found.Type
-                    : '.');
+                Console.Write(_grid[x, y] ? "#" : ".");
             }
             Console.WriteLine();
         }
@@ -93,134 +92,98 @@ class Grid
                     var newwNeighbors = neighbors
                         .Where(n => !visited.Any(v => v.X == n.X && v.Y == n.Y))
                         .ToList();
-                    Console.Write($"3 neighbors found for {entry.X}, {entry.Y}; unique = " + newwNeighbors.Count());
-
-
+                    Console.Write($"3 neighbors found for {entry.X}, {entry.Y}; unique = " + newwNeighbors.Count);
                     return;
             }
         }
-
-        Print();
+        
+        Console.WriteLine("Now creating a grid");
+        Console.WriteLine($"MinX = {MinX()}, MaxX = {MaxX()}, MinY = {MinY()}, MaxY = {MaxY()}");
+        
+        // Create 2d bool grid
+        int width = (int)(MaxX() - MinX() + 3);
+        int height = (int)(MaxY() - MinY() + 3);
+        
+        _grid = new bool[width, height];
+        foreach (var c in Data)
+        {
+            var x = (int)(c.X - MinX()) + 1;
+            var y = (int)(c.Y - MinY()) + 1;
+            _grid[x, y] = true;
+        }
+        // Print();
+        Console.WriteLine("Finished creating a grid");
+        
         FloodFillInterior();
         Print();
-
+        Console.WriteLine("Finished flooding grid");
     }
     
-    public void FloodFillInterior()
+    public bool[] GetRowSubset(long minX, long maxX, long y)
     {
-        // Create a set of existing coordinates for fast lookup
-        var existingCoords = new HashSet<(long, long)>(Data.Select(c => (c.X, c.Y)));
-        
-        // Find a point inside the loop to start flood fill
-        var startPoint = FindInteriorPoint(existingCoords);
-        if (startPoint == null)
+        var length = maxX - minX + 1;
+        bool[] subset = new bool[length];
+        for (long x = minX, i = 0; x <= maxX; x++, i++)
         {
-            Console.WriteLine("Could not find interior point");
-            return;
+            subset[i] = _grid[x, y];
         }
-        
-        // Flood fill from the interior point
-        var queue = new Queue<(long X, long Y)>();
-        var visited = new HashSet<(long, long)>();
-        
-        queue.Enqueue(startPoint.Value);
-        visited.Add(startPoint.Value);
-        
-        // Directions: up, down, left, right
-        var directions = new[] { (0, 1), (0, -1), (-1, 0), (1, 0) };
-        
+        return subset;
+    }
+    
+    public bool[] GetColumnSubset(long x, long minY, long maxY)
+    {
+        var length = maxY - minY + 1;
+        bool[] subset = new bool[length];
+        for (long y = minY, i = 0; y <= maxY; y++, i++)
+        {
+            subset[i] = _grid[x, y];
+        }
+        return subset;
+    }
+    
+    private void FloodFillInterior()
+    {
+        int width = _grid.GetLength(0);
+        int height = _grid.GetLength(1);
+        bool[,] visited = new bool[width, height];
+    
+        var queue = new Queue<(int x, int y)>();
+        queue.Enqueue((0, 0));
+        visited[0, 0] = true;
+    
+        int[] dx = { 0, 1, 0, -1 };
+        int[] dy = { 1, 0, -1, 0 };
+    
         while (queue.Count > 0)
         {
-            var current = queue.Dequeue();
-            
-            // Add this point as green if it's not already in Data
-            if (!existingCoords.Contains(current))
+            var (x, y) = queue.Dequeue();
+            for (int dir = 0; dir < 4; dir++)
             {
-                Data.Add(new Coordinates(TileType.Green, current.X, current.Y));
-                existingCoords.Add(current);
-            }
-            
-            // Check all 4 directions
-            foreach (var (dx, dy) in directions)
-            {
-                var newX = current.X + dx;
-                var newY = current.Y + dy;
-                var newPoint = (newX, newY);
-                
-                // Skip if already visited
-                if (visited.Contains(newPoint)) continue;
-                
-                // Skip if it's a boundary point (red coordinate)
-                if (Data.Any(c => c.X == newX && c.Y == newY && c.Type == TileType.Red)) continue;
-                
-                // Check if this point is inside the loop using ray casting
-                if (IsInsideLoop(newX, newY))
+                int nx = x + dx[dir];
+                int ny = y + dy[dir];
+                if (nx >= 0 && ny >= 0 && nx < width && ny < height)
                 {
-                    visited.Add(newPoint);
-                    queue.Enqueue(newPoint);
+                    if (!_grid[nx, ny] && !visited[nx, ny])
+                    {
+                        visited[nx, ny] = true;
+                        queue.Enqueue((nx, ny));
+                    }
                 }
             }
         }
-        
-        Console.WriteLine("Finished flooding");
-    }
-
-    private (long X, long Y)? FindInteriorPoint(HashSet<(long, long)> existingCoords)
-    {
-        // Find a point that's already green (connecting line) as starting point
-        var greenPoint = Data.FirstOrDefault(c => c.Type == TileType.Green);
-        if (greenPoint != null)
+    
+        // Set all non-visited cells to true (interior)
+        for (int x = 0; x < width; x++)
         {
-            return (greenPoint.X, greenPoint.Y);
-        }
-        
-        // Alternative: scan horizontally and find a point between red boundaries
-        for (long y = MinY(); y <= MaxY(); y++)
-        {
-            var redPointsInRow = Data.Where(c => c.Y == y && c.Type == TileType.Red)
-                                    .OrderBy(c => c.X).ToList();
-            
-            if (redPointsInRow.Count >= 2)
+            for (int y = 0; y < height; y++)
             {
-                // Find a point between first two red points
-                long midX = (redPointsInRow[0].X + redPointsInRow[1].X) / 2;
-                if (IsInsideLoop(midX, y))
-                {
-                    return (midX, y);
-                }
+                if (!visited[x, y])
+                    _grid[x, y] = true;
             }
         }
-        
-        return null;
     }
-
-    private bool IsInsideLoop(long x, long y)
-    {
-        // Ray casting algorithm - cast ray to the right and count intersections
-        var redPoints = Data.Where(c => c.Type == TileType.Red).ToList();
-        int intersections = 0;
-        
-        for (int i = 0; i < redPoints.Count; i++)
-        {
-            var p1 = redPoints[i];
-            var p2 = redPoints[(i + 1) % redPoints.Count];
-            
-            // Check if ray crosses this edge
-            if ((p1.Y > y) != (p2.Y > y))
-            {
-                // Calculate intersection x-coordinate
-                double intersectX = p1.X + (double)(p2.X - p1.X) * (y - p1.Y) / (p2.Y - p1.Y);
-                if (x < intersectX)
-                {
-                    intersections++;
-                }
-            }
-        }
-        
-        return (intersections % 2) == 1;
-    }
-
-
+    
+    
     private void AddGreen(Coordinates neighbor, Coordinates entry)
     {
         long dx = neighbor.X - entry.X;
@@ -276,4 +239,5 @@ class Grid
 
         return neighbors;
     }
+    
 }
