@@ -9,12 +9,16 @@ public class Program
 
     static void Main(string[] args)
     {
+        var sw = new Stopwatch();
+        sw.Start();
         ReadData("testdata.txt");
         Debug.Assert(CalcPart1() == 4277556);
         Debug.Assert(CalcPart2() == 3263827);
         ReadData("data.txt");
         Console.WriteLine(CalcPart1());
         Console.WriteLine(CalcPart2());
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
     }
 
     private static long CalcPart1()

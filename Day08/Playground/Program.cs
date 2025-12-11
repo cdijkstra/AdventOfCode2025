@@ -6,16 +6,19 @@ public class Program
     private static List<Junction> _junctions = new();
     static void Main(string[] args)
     {
-        // ReadFile("testData.txt");
-        // Debug.Assert(SolvePart1(10) == 40);
-        // ReadFile("testData.txt");
-        // Debug.Assert(SolvePart2() == 25272);
-        //
-        // ReadFile("data.txt");
-        // Console.WriteLine(SolvePart1(1000));
+        var sw = new Stopwatch();
+        sw.Start();
+        ReadFile("testData.txt");
+        Debug.Assert(SolvePart1(10) == 40);
+        ReadFile("testData.txt");
+        Debug.Assert(SolvePart2() == 25272);
+        
+        ReadFile("data.txt");
+        Console.WriteLine(SolvePart1(1000));
         ReadFile("data.txt");
         Console.WriteLine(SolvePart2());
-        // 170050948 is too low
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
     }
 
     private static int SolvePart1(int repeats, int multiplyLargestNum = 3)
@@ -29,13 +32,8 @@ public class Program
             var A = topPairs[idx].A;
             var B = topPairs[idx].B;
             
-            if (A.ConnectedTo.Contains(B))
+            if (!A.ConnectedTo.Contains(B))
             {
-                Console.WriteLine($"Skipping {A.Name} with {B.Name} (already connected)");
-            }
-            else
-            {
-                Console.WriteLine($"Connecting {A.Name} with {B.Name}");
                 A.ConnectedTo.Add(B);
                 B.ConnectedTo.Add(A);
                 connected++;
@@ -125,11 +123,6 @@ public class Program
         var topPairs = pairs
             .Take(2 * topN)
             .ToList();
-        
-        foreach (var pair in topPairs)
-        {
-            Console.WriteLine($"Connecting {pair.A.Name} with {pair.B.Name} (distance {pair.Distance})");
-        }
 
         return topPairs;
     }

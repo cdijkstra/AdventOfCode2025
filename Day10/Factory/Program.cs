@@ -16,12 +16,16 @@ public class Program
 
     static void Main(string[] args)
     {
+        var sw = new Stopwatch();
+        sw.Start();
         ReadData("testdata.txt");
         Debug.Assert(Part1() == 7);
         Debug.Assert(Part2() == 33);
         ReadData("data.txt");
         Console.WriteLine(Part1());
         Console.WriteLine(Part2());
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
     }
 
     private static void ReadData(string fileName)
@@ -57,7 +61,6 @@ public class Program
         var machineIdx = 0;
         foreach (var machine in _machines)
         {
-            Console.WriteLine($"Considering machine {++machineIdx}; buttons = {totalButtonsPressed}");
             var currentDiagram = new bool[machine.DesiredDiagram.Length];
             var intialBitsOff = machine.DesiredDiagram
                 .Zip(currentDiagram, (a, b) => a != b)

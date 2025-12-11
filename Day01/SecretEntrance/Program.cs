@@ -4,12 +4,16 @@ class Program
 {
     static void Main(string[] args)
     {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
         var testdata = ReadData("dummydata.txt");
         var data = ReadData("data.txt");
         Debug.Assert(CalculateTimesAtZero(testdata) == 3);
         Debug.Assert(CalculateTimesPassingZero(testdata) == 6);
         Console.WriteLine("Part 1: " + CalculateTimesAtZero(data));
         Console.WriteLine("Part 2: " + CalculateTimesPassingZero(data));
+        stopWatch.Stop();
+        Console.WriteLine(stopWatch.ElapsedMilliseconds);
     }
 
     private static int CalculateTimesAtZero(string[] data)

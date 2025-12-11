@@ -4,6 +4,8 @@ public class Program
 {
     static void Main(string[] args)
     {
+        var sw = new Stopwatch();
+        sw.Start();
         List<(long low, long high)> testRanges, testRanges2, ranges;
         List<long> testIngredients, testIngredients2, ingredients;
         
@@ -15,6 +17,8 @@ public class Program
         Debug.Assert(CalculateFreshnessPart2(testRanges, testIngredients) == 14);
         Debug.Assert(CalculateFreshnessPart2(testRanges2, testIngredients2) == 20);
         Console.WriteLine(CalculateFreshnessPart2(ranges, ingredients));
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
     }
     
     private static long CalculateFreshness(List<(long low, long high)> ranges, List<long> ingredients)

@@ -5,12 +5,16 @@ internal abstract class Program
 {
     static void Main(string[] args)
     {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
         var testBanks = ReadData("testdata.txt");
         var banks = ReadData("data.txt");
         Debug.Assert(CalculateDoubleJolt(testBanks) == 357);
         Console.WriteLine(CalculateDoubleJolt(banks));
         Debug.Assert(CalculateMultipleJolt(testBanks) == 3121910778619);
         Console.WriteLine(CalculateMultipleJolt(banks));
+        stopWatch.Stop();
+        Console.WriteLine(stopWatch.ElapsedMilliseconds);
     }
 
     private static string[] ReadData(string fileName)

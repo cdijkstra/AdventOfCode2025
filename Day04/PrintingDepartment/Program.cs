@@ -4,12 +4,16 @@ public class Program
 {
     static void Main(string[] args)
     {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
         var testGrid = ReadData("testdata.txt");
         var grid = ReadData("data.txt");
         Debug.Assert(CalculateAmountOfPaper(testGrid) == 13);
         Console.WriteLine("Part 1: " + CalculateAmountOfPaper(grid));
         Debug.Assert(CalculateAmountOfPaperPart2(testGrid) == 43);
         Console.WriteLine("Part 2: " + CalculateAmountOfPaperPart2(grid));
+        stopWatch.Stop();
+        Console.WriteLine(stopWatch.ElapsedMilliseconds);
 
     }
 

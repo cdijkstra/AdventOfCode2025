@@ -6,12 +6,16 @@ internal class Program
 {
     private static void Main(string[] args)
     {
+        var stopWatch = new Stopwatch();
+        stopWatch.Start();
         var testdata = ReadData("testdata.txt");
         var data = ReadData("data.txt");
         Debug.Assert(CalcDoubleId(testdata) == 1227775554);
         Console.WriteLine($"Part 1: {CalcDoubleId(data)}");
         Debug.Assert(CalcRepeatedId(testdata) == 4174379265);
         Console.WriteLine($"Part 2: {CalcRepeatedId(data)}");
+        stopWatch.Stop();
+        Console.WriteLine(stopWatch.ElapsedMilliseconds);
     }
 
     private static long CalcDoubleId(string[] data)

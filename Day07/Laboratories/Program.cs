@@ -6,12 +6,16 @@ public class Program
     
     static void Main(string[] args)
     {
+        var sw = new Stopwatch();
+        sw.Start();
         ReadFile("testData.txt");
         Debug.Assert(SolvePart1() == 21);
         Debug.Assert(SolvePart2() == 40);
         ReadFile("data.txt");
         Console.WriteLine(SolvePart1());
         Console.WriteLine(SolvePart2());
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
     }
 
     private static void ReadFile(string fileName)
