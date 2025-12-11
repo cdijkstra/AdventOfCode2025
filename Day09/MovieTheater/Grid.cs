@@ -33,6 +33,9 @@ class Grid
 
     public void CreateConnectedGrid()
     {
+        var sw = new Stopwatch();
+        sw.Start();
+        
         _connections = [];
         _bitArray = new List<BitArray>();
         var width = MaxX() - MinX() + 1;
@@ -50,6 +53,7 @@ class Grid
         Console.WriteLine("Creating the grid part 2");
         
         // Print();
+        Console.WriteLine($"Time passed; {sw.ElapsedMilliseconds}");
         Console.WriteLine("Connecting the grid");
         var firstEntry = (from x in Enumerable.Range(0, _bitArray.Count)
             from y in Enumerable.Range(0, _bitArray[x].Count)
@@ -104,11 +108,15 @@ class Grid
         }
 
         // Print();
+        Console.WriteLine($"Time passed; {sw.ElapsedMilliseconds}");
+
         Console.WriteLine("Flooding the grid");
         FillInterior();
         
         Console.WriteLine("Finished flooding the grid");
-        Print();
+        Console.WriteLine($"Time passed; {sw.ElapsedMilliseconds}");
+
+        // Print();
     }
     
     private void FillInterior()

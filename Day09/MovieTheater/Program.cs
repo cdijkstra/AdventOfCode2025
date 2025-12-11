@@ -8,9 +8,9 @@ public class Program
     static void Main(string[] args)
     {
         // Debug.Assert(Part1("testdata.txt") == 50);
-        Debug.Assert(Part2("testdata.txt") == 24);
+        // Debug.Assert(Part2("testdata.txt") == 24);
         // Console.WriteLine(Part1("data.txt"));
-        // Console.WriteLine(Part2("data.txt"));
+        Console.WriteLine(Part2("data.txt"));
         
         // 2930732777 too high
         // 2146031745 not right
@@ -81,19 +81,22 @@ public class Program
             var maxX = Math.Max(pair.left.X, pair.right.X);
             var minY = Math.Min(pair.left.Y, pair.right.Y);
             var maxY = Math.Max(pair.left.Y, pair.right.Y);
-            
-            // Check if borders contain any element that is false
-            if (_grid.GetRowSubset(minX, maxX, minY).Any(el => !el) ||
-                _grid.GetRowSubset(minX, maxX, maxY).Any(el => !el))
+
+            bool allFilled = true;
+            for (var y = minY; y <= maxY && allFilled; y++)
             {
-                continue;
+                // Check if borders contain any element that is false
+                if (_grid.GetRowSubset(minX, maxX, y).All(el => el)) continue;
+                allFilled = false;
+            }
+
+            for (var x = minX; x <= maxX && allFilled; x++)
+            {
+                if (_grid.GetColumnSubset(minY, maxY, x).All(el => el)) continue;
+                allFilled = false;
             }
             
-            if (_grid.GetColumnSubset(minY, maxY, minX).Any(el => !el) ||
-                _grid.GetColumnSubset(minY, maxY, maxX).Any(el => !el))
-            {
-                continue;
-            }
+            if (!allFilled) continue;
             
             Console.WriteLine($"Found a match: {pair.area}");
             return pair.area;
