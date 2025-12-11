@@ -21,4 +21,8 @@ class Coordinates
     {
         return HashCode.Combine(X, Y);
     }
-}
+    
+    public int CompareTo(Coordinates other)
+    {
+        return (X, Y).CompareTo((other.X, other.Y));
+    }}

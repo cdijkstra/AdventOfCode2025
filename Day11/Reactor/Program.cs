@@ -9,6 +9,7 @@ public class Node
 public class Program
 {
     private static List<Node> _nodes = new();
+    private static Dictionary<(string nodeName, bool hasDac, bool hasFft), long> _nodeDict = new();
 
     static void Main(string[] args)
     {
@@ -37,7 +38,7 @@ public class Program
         return routes;
         
     }
-    private static int Part2(string fileName)
+    private static long Part2(string fileName)
     {
         ReadData(fileName);
         var routes = TraverseDacFft();
@@ -64,20 +65,32 @@ public class Program
         return finished;
     }
     
-    private static int TraverseDacFft()
+    private static long TraverseDacFft()
     {
-        var finished = 0;
+        long finished = 0;
         var firstNode = _nodes.Single(n => n.Name == "svr");
         HashSet<string> PassBy = new() { "fft", "dac" };
         
-        var pq = new PriorityQueue<(Node node, HashSet<string>), int>();
+        var pq = new PriorityQueue<(Node node, HashSet<string> visited), int>();
         firstNode.ConnectedTo.ForEach(n => pq.Enqueue((_nodes.Single(nn => nn.Name == n), new()), 0));
         while (pq.Count > 0)
         {
             var (node, visited) = pq.Dequeue();
+            bool hasDac = visited.Contains("dac");
+            bool hasFft = visited.Contains("fft");
+            var cacheKey = (node.Name, hasDac, hasFft);
+            
+            if (_nodeDict.TryGetValue(cacheKey, out long count))
+            {
+                Console.WriteLine($"FOUND IN CACHE! Count = {count}");
+                finished += count;
+                continue;
+            }
+            
             var validNeighbors = node.ConnectedTo.Where(n => !visited.Contains(n)).ToList();
             int passByCount = PassBy.Count(item => visited.Contains(item));
-            
+            int localFinished = 0;
+
             foreach (var neighbor in validNeighbors)
             {
                 if (neighbor == "out")
@@ -94,8 +107,11 @@ public class Program
                     pq.Enqueue((next, newVisited), -passByCount);
                 }
             }
+            
+            _nodeDict[cacheKey] = finished;
         }
-
+        
+        
         return finished;
     }
 }

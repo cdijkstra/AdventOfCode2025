@@ -8,11 +8,12 @@ public class Program
     static void Main(string[] args)
     {
         // Debug.Assert(Part1("testdata.txt") == 50);
-        // Debug.Assert(Part2("testdata.txt") == 24);
+        Debug.Assert(Part2("testdata.txt") == 24);
         // Console.WriteLine(Part1("data.txt"));
-        Console.WriteLine(Part2("data.txt"));
+        // Console.WriteLine(Part2("data.txt"));
         
         // 2930732777 too high
+        // 2146031745 not right
     }
     
     private static void ReadData(string fileName)
@@ -82,14 +83,14 @@ public class Program
             var maxY = Math.Max(pair.left.Y, pair.right.Y);
             
             // Check if borders contain any element that is false
-            if (_grid.GetRowSubset(minX, maxX, minY).Any(el => el == false) ||
-                _grid.GetRowSubset(minX, maxX, maxY).Any(el => el == false))
+            if (_grid.GetRowSubset(minX, maxX, minY).Any(el => !el) ||
+                _grid.GetRowSubset(minX, maxX, maxY).Any(el => !el))
             {
                 continue;
             }
             
-            if (_grid.GetColumnSubset(minX, minY, maxY).Any(el => el == false) ||
-                _grid.GetColumnSubset(maxX, minY, maxY).Any(el => el == false))
+            if (_grid.GetColumnSubset(minY, maxY, minX).Any(el => !el) ||
+                _grid.GetColumnSubset(minY, maxY, maxX).Any(el => !el))
             {
                 continue;
             }

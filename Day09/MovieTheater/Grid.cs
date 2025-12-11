@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Diagnostics;
 
 namespace _09;
 
@@ -37,21 +38,19 @@ class Grid
         var width = MaxX() - MinX() + 1;
         var height = MaxY() - MinY() + 1;
         
-        Console.WriteLine("Creating the grid");
-        var coordSet = new HashSet<(int x, int y)>(Data.Select(c => (c.X, c.Y)));
-        for (var x = 0; x < width; x++)
+        Console.WriteLine("Creating the grid part 1");
+        _bitArray = Enumerable.Range(0, width)
+            .Select(_ => new BitArray(height, false))
+            .ToList();
+
+        foreach (var coors in Data)
         {
-            var array = new BitArray(height);
-            for (var y = 0; y < height; y++)
-            {
-                if (coordSet.Contains((x + MinX(), y + MinY())))
-                    array[y] = true;
-            }
-            _bitArray.Add(array);
+            _bitArray[coors.X - MinX()][coors.Y - MinY()] = true;
         }
+        Console.WriteLine("Creating the grid part 2");
         
         // Print();
-        Console.WriteLine("Filling the grid");
+        Console.WriteLine("Connecting the grid");
         var firstEntry = (from x in Enumerable.Range(0, _bitArray.Count)
             from y in Enumerable.Range(0, _bitArray[x].Count)
             where _bitArray[x][y]
@@ -59,7 +58,8 @@ class Grid
         
         var queue = new Queue<Coordinates>();
         queue.Enqueue(firstEntry);
-        
+        HashSet<(Coordinates, Coordinates)> connectionSet = new();
+
         while (queue.Count > 0)
         {
             var entry = queue.Dequeue();
@@ -67,33 +67,71 @@ class Grid
             if (validNeighbors.Count == 0) continue;
             foreach (var neighbor in validNeighbors)
             {
+                var conn = (entry, neighbor);
+                // Canonical order: always (min, max)
+                if (neighbor.CompareTo(entry) < 0)
+                    conn = (neighbor, entry);
+
+                if (connectionSet.Contains(conn))
+                    continue; // Already processed
+
+                connectionSet.Add(conn);
+                _connections.Add(conn);
+                
                 if (neighbor.X != entry.X)
                 {
-                    var step = Math.Sign(neighbor.X - entry.X);
-                    for (var dx = entry.X + step; dx != neighbor.X; dx += step)
+                    int start = Math.Min(entry.X, neighbor.X) + 1;
+                    int end = Math.Max(entry.X, neighbor.X) - 1;
+                    for (int dx = start; dx <= end; dx++)
                     {
                         _bitArray[dx][entry.Y] = true;
                     }
                 }
-                
+
                 if (neighbor.Y != entry.Y)
                 {
-                    var step = Math.Sign(neighbor.Y - entry.Y);
-                    for (var dy = entry.Y + step; dy != neighbor.Y; dy += step)
+                    int start = Math.Min(entry.Y, neighbor.Y) + 1;
+                    int end = Math.Max(entry.Y, neighbor.Y) - 1;
+                    for (int dy = start; dy <= end; dy++)
                     {
                         _bitArray[entry.X][dy] = true;
                     }
                 }
-                
+
                 _connections.Add((entry, neighbor));
                 queue.Enqueue(neighbor);
             }
-            
-            // Find neighbors
         }
-        Print();
+
+        // Print();
+        Console.WriteLine("Flooding the grid");
+        FillInterior();
         
-        Console.WriteLine("Finished creating a grid");
+        Console.WriteLine("Finished flooding the grid");
+        Print();
+    }
+    
+    private void FillInterior()
+    {
+        foreach (var row in _bitArray)
+        {
+            int first = -1, last = -1;
+            for (var y = 0; y < row.Count; y++)
+            {
+                if (!row[y]) continue;
+                
+                if (first == -1) first = y;
+                last = y;
+            }
+            
+            if (first != -1 && last != -1 && last > first)
+            {
+                for (var y = first + 1; y < last; y++)
+                {
+                    row[y] = true;
+                }
+            }
+        }
     }
     
     private List<Coordinates> GetValidNeighbors(Coordinates entry)
@@ -112,11 +150,13 @@ class Grid
                 ny += dy[dir];
                 if (nx < 0 || ny < 0 || nx >= _bitArray.Count || ny >= _bitArray[0].Count)
                     break;
-                var neighbor = new Coordinates(nx, ny);
-                if (_bitArray[nx][ny])
+                
+                var neighbor = new Coordinates(nx + MinX(), ny + MinY());
+                if (Data.Contains(neighbor))
                 {
-                    if (!_connections.Contains((entry, neighbor)))
-                        neighbors.Add(neighbor);
+                    var gridNeighbor = new Coordinates(nx, ny);
+                    if (!_connections.Contains((entry, gridNeighbor)))
+                        neighbors.Add(gridNeighbor);
                     break; // Stop at the first neighbor found in this direction
                 }
             }
@@ -136,7 +176,7 @@ class Grid
         return subset;
     }
 
-    public bool[] GetColumnSubset(long x, long minY, long maxY)
+    public bool[] GetColumnSubset(long minY, long maxY, long x)
     {
         var length = maxY - minY + 1;
         bool[] subset = new bool[length];
@@ -146,81 +186,4 @@ class Grid
         }
         return subset;
     }
-    
-    private void FloodFillInterior()
-    {
-        int height = _bitArray.Count;
-        int width = _bitArray[0].Length;
-        bool[,] visited = new bool[width, height];
-    
-        var queue = new Queue<(int x, int y)>();
-        queue.Enqueue((0, 0));
-        visited[0, 0] = true;
-    
-        int[] dx = { 0, 1, 0, -1 };
-        int[] dy = { 1, 0, -1, 0 };
-    
-        while (queue.Count > 0)
-        {
-            var (x, y) = queue.Dequeue();
-            for (int dir = 0; dir < 4; dir++)
-            {
-                int nx = x + dx[dir];
-                int ny = y + dy[dir];
-                if (nx >= 0 && ny >= 0 && nx < width && ny < height)
-                {
-                    if (!_bitArray[ny][nx] && !visited[nx, ny])
-                    {
-                        visited[nx, ny] = true;
-                        queue.Enqueue((nx, ny));
-                    }
-                }
-            }
-        }
-    
-        // Set all non-visited cells to true (interior)
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                if (!visited[x, y])
-                    _bitArray[y][x] = true;
-            }
-        }
-    }
-    
-
-    // private List<Coordinates> FindNeighbors(Coordinates coors)
-    // {
-    //     var neighbors = new List<Coordinates>();
-    //     var leftNeighbor = Data
-    //         .Where(c => c.Y == coors.Y && c.X < coors.X && c.Type == TileType.Red)
-    //         .OrderByDescending(c => c.X)
-    //         .FirstOrDefault();
-    //
-    //     var rightNeighbor = Data
-    //         .Where(c => c.Y == coors.Y && c.X > coors.X && c.Type == TileType.Red)
-    //         .OrderBy(c => c.X)
-    //         .FirstOrDefault();
-    //     
-    //     var upNeighbor = Data
-    //         .Where(c => c.X == coors.X && c.Y > coors.Y && c.Type == TileType.Red)
-    //         .OrderByDescending(c => c.X)
-    //         .FirstOrDefault();
-    //
-    //     var downNeighbor = Data
-    //         .Where(c => c.X == coors.X && c.Y < coors.Y && c.Type == TileType.Red)
-    //         .OrderBy(c => c.X)
-    //         .FirstOrDefault();
-    //
-    //     if (leftNeighbor != null) neighbors.Add(leftNeighbor);
-    //     if (rightNeighbor != null) neighbors.Add(rightNeighbor);
-    //     if (upNeighbor != null) neighbors.Add(upNeighbor);
-    //     if (downNeighbor != null) neighbors.Add(downNeighbor);
-    //     
-    //     Console.WriteLine($"Found {neighbors.Count} neighbors for {coors.X}, {coors.Y}");
-    //
-    //     return neighbors;
-    // }
-    
 }
