@@ -40,9 +40,7 @@ public class Program
     private static int Part2(string fileName)
     {
         ReadData(fileName);
-        var node = _nodes.Single(n => n.Name == "svr");
-        var routes = TraverseDacFft(node, new());
-        Console.WriteLine(routes);
+        var routes = TraverseDacFft();
         return routes;
         
     }
@@ -66,21 +64,36 @@ public class Program
         return finished;
     }
     
-    private static int TraverseDacFft(Node node, List<string> visited)
+    private static int TraverseDacFft()
     {
         var finished = 0;
-        var validNeighbors = node.ConnectedTo.Where(n => !visited.Contains(n)).ToList();
+        var firstNode = _nodes.Single(n => n.Name == "svr");
+        HashSet<string> PassBy = new() { "fft", "dac" };
         
-        foreach (var neighbor in validNeighbors)
+        var pq = new PriorityQueue<(Node node, HashSet<string>), int>();
+        firstNode.ConnectedTo.ForEach(n => pq.Enqueue((_nodes.Single(nn => nn.Name == n), new()), 0));
+        while (pq.Count > 0)
         {
-            // Console.WriteLine($"{node.Name} -> {string.Join(',', visited)}; valid neighbors: {string.Join(',', validNeighbors)}");
-            if (neighbor == "out")
-            {
-                return visited.Contains("fft") && visited.Contains("dac") ? 1 : 0;
-            }
+            var (node, visited) = pq.Dequeue();
+            var validNeighbors = node.ConnectedTo.Where(n => !visited.Contains(n)).ToList();
+            int passByCount = PassBy.Count(item => visited.Contains(item));
             
-            var next = _nodes.Single(n => n.Name == neighbor);
-            finished += TraverseDacFft(next, visited.Append(neighbor).ToList());
+            foreach (var neighbor in validNeighbors)
+            {
+                if (neighbor == "out")
+                {
+                    if (passByCount == 2)
+                    {
+                        Console.WriteLine($"FINISHED!; Count = {++finished}");
+                    }
+                }
+                else
+                {
+                    var next = _nodes.Single(n => n.Name == neighbor);
+                    var newVisited = new HashSet<string>(visited) { neighbor };
+                    pq.Enqueue((next, newVisited), -passByCount);
+                }
+            }
         }
 
         return finished;
