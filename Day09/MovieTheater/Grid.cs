@@ -33,13 +33,10 @@ class Grid
 
     public void CreateConnectedGrid()
     {
-        var sw = new Stopwatch();
-        sw.Start();
-        
         _connections = [];
         _bitArray = new List<BitArray>();
-        var width = MaxX() - MinX() + 1;
-        var height = MaxY() - MinY() + 1;
+        var width = MaxX()+ 1;
+        var height = MaxY() + 1;
         
         Console.WriteLine("Creating the grid part 1");
         _bitArray = Enumerable.Range(0, width)
@@ -48,130 +45,100 @@ class Grid
 
         foreach (var coors in Data)
         {
-            _bitArray[coors.X - MinX()][coors.Y - MinY()] = true;
+            _bitArray[coors.X][coors.Y] = true;
         }
         Console.WriteLine("Creating the grid part 2");
-        
-        // Print();
-        Console.WriteLine($"Time passed; {sw.ElapsedMilliseconds}");
-        Console.WriteLine("Connecting the grid");
-        var firstEntry = (from x in Enumerable.Range(0, _bitArray.Count)
-            from y in Enumerable.Range(0, _bitArray[x].Count)
-            where _bitArray[x][y]
-            select new Coordinates(x, y)).FirstOrDefault();
-        
-        var queue = new Queue<Coordinates>();
-        queue.Enqueue(firstEntry);
-        HashSet<(Coordinates, Coordinates)> connectionSet = new();
-
-        while (queue.Count > 0)
+        for (var dataIdx = 0; dataIdx < Data.Count; dataIdx++)
         {
-            var entry = queue.Dequeue();
-            var validNeighbors = GetValidNeighbors(entry);
-            if (validNeighbors.Count == 0) continue;
-            foreach (var neighbor in validNeighbors)
+            var entry = Data[dataIdx];
+            var next = Data[(dataIdx + 1) % Data.Count];
+            if (next.X != entry.X)
             {
-                var conn = (entry, neighbor);
-                // Canonical order: always (min, max)
-                if (neighbor.CompareTo(entry) < 0)
-                    conn = (neighbor, entry);
-
-                if (connectionSet.Contains(conn))
-                    continue; // Already processed
-
-                connectionSet.Add(conn);
-                _connections.Add(conn);
-                
-                if (neighbor.X != entry.X)
+                var step = Math.Sign(next.X - entry.X);
+                for (var x = entry.X + step; x != next.X; x += step)
                 {
-                    int start = Math.Min(entry.X, neighbor.X) + 1;
-                    int end = Math.Max(entry.X, neighbor.X) - 1;
-                    for (int dx = start; dx <= end; dx++)
-                    {
-                        _bitArray[dx][entry.Y] = true;
-                    }
+                    _bitArray[x][entry.Y] = true;
                 }
-
-                if (neighbor.Y != entry.Y)
+            }
+            else
+            {
+                var step = Math.Sign(next.Y - entry.Y);
+                for (var y = entry.Y + step; y != next.Y; y += step)
                 {
-                    int start = Math.Min(entry.Y, neighbor.Y) + 1;
-                    int end = Math.Max(entry.Y, neighbor.Y) - 1;
-                    for (int dy = start; dy <= end; dy++)
-                    {
-                        _bitArray[entry.X][dy] = true;
-                    }
+                    _bitArray[entry.X][y] = true;
                 }
-
-                _connections.Add((entry, neighbor));
-                queue.Enqueue(neighbor);
             }
         }
-
-        // Print();
-        Console.WriteLine($"Time passed; {sw.ElapsedMilliseconds}");
-
+        
         Console.WriteLine("Flooding the grid");
         FillInterior();
-        
         Console.WriteLine("Finished flooding the grid");
-        Console.WriteLine($"Time passed; {sw.ElapsedMilliseconds}");
-
-        // Print();
     }
-    
-    private void FillInterior()
+
+    private (int x, int y) FindInterior()
     {
-        foreach (var row in _bitArray)
+        int width = _bitArray.Count;
+        int height = _bitArray[0].Count;
+
+        for (int y = 0; y < height; y++)
         {
-            int first = -1, last = -1;
-            for (var y = 0; y < row.Count; y++)
+            var row = _bitArray.Select(col => col[y]).ToArray();
+            bool hasConsecutiveTrue = row.Zip(row.Skip(1), (a, b) => a && b).Any(x => x);
+
+            if (hasConsecutiveTrue)
+                continue;
+
+            for (int x = 0; x < width - 2; x++)
             {
-                if (!row[y]) continue;
-                
-                if (first == -1) first = y;
-                last = y;
-            }
-            
-            if (first != -1 && last != -1 && last > first)
-            {
-                for (var y = first + 1; y < last; y++)
-                {
-                    row[y] = true;
-                }
+                if (!row[x] && row[x + 1] && !row[x + 2])
+                    return (x + 2, y);
             }
         }
+
+        throw new Exception("No interior found");
     }
-    
-    private List<Coordinates> GetValidNeighbors(Coordinates entry)
+
+    private void FillInterior()
     {
-        var neighbors = new List<Coordinates>();
+        int width = _bitArray.Count;
+        int height = _bitArray[0].Count;
+        var visited = Enumerable.Range(0, width)
+            .Select(_ => new BitArray(height, false))
+            .ToList();
+
+        var queue = new Queue<(int x, int y)>();
+
+        // Enqueue a single interior point
+        var interior = FindInterior();
+        queue.Enqueue((interior.x, interior.y));
+
         int[] dx = { 0, 1, 0, -1 };
         int[] dy = { 1, 0, -1, 0 };
 
-        for (int dir = 0; dir < 4; dir++)
+        while (queue.Count > 0)
         {
-            int nx = entry.X;
-            int ny = entry.Y;
-            while (true)
+            var (x, y) = queue.Dequeue();
+            if (x < 0 || y < 0 || x >= width || y >= height) continue;
+            if (visited[x][y] || _bitArray[x][y]) continue; // Don't cross walls
+            visited[x][y] = true;
+            for (int dir = 0; dir < 4; dir++)
             {
-                nx += dx[dir];
-                ny += dy[dir];
-                if (nx < 0 || ny < 0 || nx >= _bitArray.Count || ny >= _bitArray[0].Count)
-                    break;
-                
-                var neighbor = new Coordinates(nx + MinX(), ny + MinY());
-                if (Data.Contains(neighbor))
+                queue.Enqueue((x + dx[dir], y + dy[dir]));
+            }
+        }
+
+        // Fill all visited cells (interior)
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
+            {
+                if (visited[x][y])
                 {
-                    var gridNeighbor = new Coordinates(nx, ny);
-                    if (!_connections.Contains((entry, gridNeighbor)))
-                        neighbors.Add(gridNeighbor);
-                    break; // Stop at the first neighbor found in this direction
+                    _bitArray[x][y] = true;
                 }
             }
         }
-        return neighbors;
     }
-    
     
     public bool[] GetRowSubset(long minX, long maxX, long y)
     {

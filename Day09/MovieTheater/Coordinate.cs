@@ -1,16 +1,10 @@
 namespace _09;
 
-class Coordinates
+class Coordinates(int x, int y)
 {
-    public int X { get; set; }
-    public int Y { get; set; }
+    public int X { get; set; } = x;
+    public int Y { get; set; } = y;
 
-    public Coordinates(int x, int y)
-    {
-        X = x;
-        Y = y;
-    }
-    
     public override bool Equals(object? obj)
     {
         if (obj is not Coordinates other) return false;

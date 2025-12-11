@@ -1,19 +1,19 @@
 ﻿using System.Diagnostics;
 using _09;
 
-
 public class Program
 {
     private static Grid _grid;
     static void Main(string[] args)
     {
-        // Debug.Assert(Part1("testdata.txt") == 50);
+        var sw = new Stopwatch();
+        sw.Start();
+        Debug.Assert(Part1("testdata.txt") == 50);
         Debug.Assert(Part2("testdata.txt") == 24);
-        // Console.WriteLine(Part1("data.txt"));
+        Console.WriteLine(Part1("data.txt"));
         Console.WriteLine(Part2("data.txt"));
-        
-        // 2930732777 too high
-        // 2146031745 not right
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
     }
     
     private static void ReadData(string fileName)
@@ -22,7 +22,12 @@ public class Program
             .Select(line => line.Split(','))
             .Select(parts => new Coordinates(int.Parse(parts[0]), int.Parse(parts[1])))
             .ToList();
-        _grid = new Grid(nums);
+        
+        var normalized = nums
+            .Select(c => new Coordinates(c.X - nums.Min(c => c.X), c.Y - nums.Min(c => c.Y)))
+            .ToList();
+
+        _grid = new Grid(normalized);
     }
     
     private static long Part1(string fileName)
@@ -82,6 +87,7 @@ public class Program
             var minY = Math.Min(pair.left.Y, pair.right.Y);
             var maxY = Math.Max(pair.left.Y, pair.right.Y);
 
+            // Only check the borders; implies the entire rectangle is within the grid
             if (_grid.GetRowSubset(minX, maxX, minY).Any(el => !el) ||
                 _grid.GetRowSubset(minX, maxX, maxY).Any(el => !el))
             {
