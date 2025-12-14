@@ -42,10 +42,10 @@ public class Program
     {
         var sw = new Stopwatch();
         sw.Start();
-        ReadFile("testdata.txt");
-        Debug.Assert(SolvePart1() == 2);
-        // ReadFile("data.txt");
-        // Console.WriteLine(SolvePart1());
+        // ReadFile("testdata.txt");
+        // Debug.Assert(SolvePart1() == 2);
+        ReadFile("data.txt");
+        Console.WriteLine(SolvePart1());
         sw.Stop();
         Console.WriteLine($"Test passed in {sw.ElapsedMilliseconds} ms");
     }
@@ -83,12 +83,11 @@ public class Program
                 newPackageNums[packageNum]++;
                 
                 var stateKey = string.Join(",", newGrid.Rows) + "|" + string.Join(",", newPackageNums);
-                if (visited.Contains(stateKey))
+                if (!visited.Add(stateKey))
                 {
                     continue;
                 }
-                visited.Add(stateKey);
-                
+
                 if (newPackageNums.SequenceEqual(_presentNums[gridIdx]))
                 {
                     Console.WriteLine($"Found a valid grid for {gridIdx}");
@@ -101,12 +100,12 @@ public class Program
                     .ToList();
                 
                 // Check if there are enough spaces left in the grid
-                var spacesAvailable = newGrid.Height * newGrid.Width - CountSetBits(newGrid.Rows);
+                var spacesAvailable = CountReachableEmptyCells(newGrid);
+                // var spacesAvailable = newGrid.Height * newGrid.Width - CountSetBits(newGrid.Rows);
                 var spacesNeeded = placePackages
                     .Select((count, idx) => count > 0 ? CountSetBits(_presents[idx].Rows) : 0)
                     .Sum();
                 if (spacesNeeded > spacesAvailable) continue;
-                
                 
                 // Place new package in queue
                 var validPackageIndices = activePackageNums
@@ -120,24 +119,20 @@ public class Program
                 {
                     // (int maxX, int maxY) = GetMaxSetBitPosition(newGrid);
                     var candidates = GetUnsetAdjacentToSetBits(newGrid.Rows, newGrid.Width);
-                    
-                    for (var x = 0; x <= Math.Min(maxX, newGrid.Width - PresentWidth); x++)
+                    foreach (var (x, y) in candidates)
                     {
-                        for (var y = 0; y <= Math.Min(maxY, newGrid.Height - PresentHeight); y++)
+                        var (canPlace, packages) = CanPlacePackage(newGrid, validPackage.Index, x, y);
+                        
+                        if (!canPlace) continue;
+                        // Package can be placed
+                        foreach (var package in packages)
                         {
-                            var (canPlace, packages) = CanPlacePackage(newGrid, validPackage.Index, x, y);
-                            
-                            if (!canPlace) continue;
-                            // Package can be placed
-                            foreach (var package in packages)
-                            {
-                                // Only add if adjacent to set bits, or if this is the first present
-                                if (!IsAdjacentToSetBits(newGrid, package, x, y))
-                                    continue;
+                            // Only add if adjacent to set bits, or if this is the first present
+                            if (!IsAdjacentToSetBits(newGrid, package, x, y))
+                                continue;
 
-                                var score = spacesNeeded - spacesAvailable; // Lower score when there's more options to fit everything
-                                pq.Enqueue((newGrid, package, validPackage.Index, x, y, newPackageNums), score);
-                            }
+                            var score = spacesNeeded - spacesAvailable; // Lower score when there's more options to fit everything
+                            pq.Enqueue((newGrid, package, validPackage.Index, x, y, newPackageNums), score);
                         }
                     }
                 }
@@ -147,48 +142,78 @@ public class Program
         return validGrids;
     }
     
-    private static List<(int x, int y)> GetUnsetAdjacentToSetBits(ulong[] rows, int width)
+    private static int CountReachableEmptyCells(BitGrid grid)
     {
-        var result = new HashSet<(int x, int y)>();
-        int height = rows.Length;
+        var visited = new bool[grid.Height, grid.Width];
+        var queue = new Queue<(int y, int x)>();
 
-        for (int y = 0; y < height; y++)
+        // Enqueue all border empty cells
+        for (int y = 0; y < grid.Height; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (int x = 0; x < grid.Width; x++)
             {
-                if (((rows[y] >> x) & 1UL) == 1)
+                bool isBorder = y == 0 || y == grid.Height - 1 || x == 0 || x == grid.Width - 1;
+                if (isBorder && (grid.Rows[y] & (1UL << x)) == 0)
                 {
-                    // Check 4 neighbors
-                    foreach (var (dx, dy) in new[] { (0, -1), (0, 1), (-1, 0), (1, 0) })
+                    queue.Enqueue((y, x));
+                    visited[y, x] = true;
+                }
+            }
+        }
+
+        // Flood fill
+        int reachable = 0;
+        int[] dx = { 0, 1, 0, -1 };
+        int[] dy = { -1, 0, 1, 0 };
+        while (queue.Count > 0)
+        {
+            var (y, x) = queue.Dequeue();
+            reachable++;
+            for (int d = 0; d < 4; d++)
+            {
+                int ny = y + dy[d], nx = x + dx[d];
+                if (ny >= 0 && ny < grid.Height && nx >= 0 && nx < grid.Width)
+                {
+                    if (!visited[ny, nx] && (grid.Rows[ny] & (1UL << nx)) == 0)
                     {
-                        int nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < width && ny >= 0 && ny < height)
-                        {
-                            if (((rows[ny] >> nx) & 1UL) == 0)
-                                result.Add((nx, ny));
-                        }
+                        visited[ny, nx] = true;
+                        queue.Enqueue((ny, nx));
                     }
                 }
             }
         }
-        return new List<(int x, int y)>(result);
+        return reachable;
     }
     
-    private static (int maxX, int maxY) GetMaxSetBitPosition(BitGrid grid)
+    private static List<(int x, int y)> GetUnsetAdjacentToSetBits(ulong[] rows, int width)
     {
-        int maxX = -1;
-        int maxY = -1;
-        for (int y = 0; y < grid.Rows.Length; y++)
+        var result = new HashSet<(int x, int y)>();
+        int height = rows.Length;
+        int maxX = width - PresentWidth;
+        int maxY = height - PresentHeight;
+        // Predefine neighbor offsets
+        ReadOnlySpan<(int dx, int dy)> neighbors =
+        [
+            (0, -1), (0, 1), (-1, 0), (1, 0)
+        ];
+
+        for (int y = 0; y < height; y++)
         {
-            ulong row = grid.Rows[y];
-            if (row != 0)
+            ulong row = rows[y];
+            if (row == 0) continue;
+            for (int x = 0; x < width; x++)
             {
-                int rowMaxX = BitOperations.Log2(row);
-                if (rowMaxX > maxX) maxX = rowMaxX;
-                maxY = y;
+                if (((row >> x) & 1UL) == 0) continue;
+                foreach (var (dx, dy) in neighbors)
+                {
+                    int nx = x + dx, ny = y + dy;
+                    if (nx < 0 || nx > maxX || ny < 0 || ny > maxY) continue;
+                    if (((rows[ny] >> nx) & 1UL) == 0)
+                        result.Add((nx, ny));
+                }
             }
         }
-        return (maxX, maxY);
+        return result.ToList();
     }
     
     // Returns true if any set bit in 'package' at (x, y) touches a set bit in 'grid'
@@ -311,6 +336,10 @@ public class Program
     private static void ReadFile(string fileName)
     {
         _presents = new();
+        _presentNums = new();
+        _grids = new();
+        _permutations = new();
+        
         var text = File.ReadAllText(fileName);
         var presents = Regex.Matches(
             text, 
