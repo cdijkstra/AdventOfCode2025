@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Numerics;
+using System.Text.RegularExpressions;
 
 public class BitGrid
 {
@@ -36,16 +37,28 @@ public class Program
     static void Main()
     {
         ReadFile("testdata.txt");
-        FillPermutations();
+        SolvePart1();
+        // ReadFile("data.txt");
+        // SolvePart1();
+    }
+
+    private static void SolvePart1()
+    {
         var validGrids = 0;
 
-        for (var gridIdx = 0; gridIdx < _grids.Count; gridIdx++)
+        for (var gridIdx = 0; gridIdx < 3; gridIdx++)
         {
             var grid = _grids[gridIdx];
-            var packageNums = _presentNums[gridIdx].Select(_ => 0).ToList();
+            var packageNums = Enumerable.Repeat(0, _presentNums[gridIdx].Count).ToList();
+            var considerIndices = _presentNums[gridIdx]
+                .Select((value, index) => (value, index))
+                .Where(pair => pair.value > 0)
+                .Select(pair => pair.index)
+                .ToList();
             
             var pq = new PriorityQueue<(BitGrid grid, BitGrid package, int packageNum, int x, int y, List<int> packageNums), int>();
-            foreach (var packageNum in packageNums)
+            
+            foreach (var packageNum in considerIndices)
             {
                 _permutations[_presents[packageNum]]
                     .ForEach(package => pq.Enqueue((grid, package, packageNum, 0, 0, packageNums), 0));
@@ -55,21 +68,35 @@ public class Program
             {
                 var (activeGrid, activePackage, packageNum, activeX, activeY, activePackageNums) = pq.Dequeue();
                 var newGrid = PlacePackage(activeGrid, activePackage, activeX, activeY);
-                
                 var newPackageNums = new List<int>(activePackageNums);
                 newPackageNums[packageNum]++;
-                
-                if (activePackageNums.SequenceEqual(_presentNums[0]))
+                if (newPackageNums.SequenceEqual(_presentNums[gridIdx]))
                 {
+                    Console.WriteLine($"Found a valid grid for {gridIdx}");
                     validGrids++;
                     break;
                 }
                 
+                var placePackages = activePackageNums
+                    .Zip(_presentNums[gridIdx], (a, t) => t - a)
+                    .ToList();
+                
+                var spacesAvailable = newGrid.Height * newGrid.Width - CountSetBits(newGrid.Rows);
+                
+                var spacesNeeded = 0;
+                for(var idx = 0; idx != placePackages.Count; idx++)
+                {
+                    if (placePackages[idx] == 0) continue;
+                    spacesNeeded += CountSetBits(_presents[idx].Rows);
+                }
+                if (spacesNeeded > spacesAvailable) continue;
+                
+                
                 // Place new package in queue
                 var validPackageIndices = activePackageNums
-                    .Zip(_presentNums[0], (a, t) => t - a)
+                    .Zip(_presentNums[gridIdx], (a, t) => t - a)
                     .Select((diff, i) => i)
-                    .Where(i => _presentNums[0][i] - activePackageNums[i] > 0)
+                    .Where(i => _presentNums[gridIdx][i] - activePackageNums[i] > 0)
                     .ToList();
 
                 foreach (var validPackage in validPackageIndices)
@@ -93,12 +120,17 @@ public class Program
             }
         }
         
-        
         Console.WriteLine(validGrids);
     }
 
+    private static int CountSetBits(ulong[] rows)
+    {
+        return rows.Sum(BitOperations.PopCount);
+    }
+    
     private static void FillPermutations()
     {
+        _permutations.Clear();
         foreach (var present in _presents)
         {
             var permutations = CreatePermutations(present);
@@ -227,6 +259,8 @@ public class Program
             _presentNums.Add(presentNumList);
         }
         Console.WriteLine(_presents.Count);
+        
+        FillPermutations();
     }
     
     static int TouchScore(BitGrid grid, BitGrid package, int x, int y)
