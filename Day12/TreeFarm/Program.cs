@@ -38,48 +38,61 @@ public class Program
         ReadFile("testdata.txt");
         FillPermutations();
         var validGrids = 0;
-        
-        var grid = _grids[0];
-        var package = _presentNums[0].FindIndex(x => x > 0);
 
-        var packageNum = _presentNums[0].Select(_ => 0).ToList();
-        
-        var pq = new PriorityQueue<(BitGrid grid, int package, int x, int y, List<int> packageNums), int>();
-        pq.Enqueue((grid, package, 0, 0, packageNum), 0);
-        
-        while (pq.Count > 0)
+        for (var gridIdx = 0; gridIdx < _grids.Count; gridIdx++)
         {
-            var (activeGrid, activePackage, activeX, activeY, activePackageNums) = pq.Dequeue();
-            var newGrid = PlacePackage(activeGrid, activePackage, activeX, activeY);
+            var grid = _grids[gridIdx];
+            var packageNums = _presentNums[gridIdx].Select(_ => 0).ToList();
             
-            activePackageNums[activePackage]++;
-            if (activePackageNums.SequenceEqual(_presentNums[0]))
+            var pq = new PriorityQueue<(BitGrid grid, BitGrid package, int packageNum, int x, int y, List<int> packageNums), int>();
+            foreach (var packageNum in packageNums)
             {
-                validGrids++;
-                break;
+                _permutations[_presents[packageNum]]
+                    .ForEach(package => pq.Enqueue((grid, package, packageNum, 0, 0, packageNums), 0));
             }
             
-            // Place new package in queue
-            var validPackageIndices = activePackageNums
-                .Zip(_presentNums[0], (a, t) => t - a)
-                .Select((diff, i) => i)
-                .Where(i => _presentNums[0][i] - activePackageNums[i] > 0)
-                .ToList();
-
-            foreach (var validPackage in validPackageIndices)
+            while (pq.Count > 0)
             {
-                for (var x = 0; x < newGrid.Width - 2; x++)
+                var (activeGrid, activePackage, packageNum, activeX, activeY, activePackageNums) = pq.Dequeue();
+                var newGrid = PlacePackage(activeGrid, activePackage, activeX, activeY);
+                
+                var newPackageNums = new List<int>(activePackageNums);
+                newPackageNums[packageNum]++;
+                
+                if (activePackageNums.SequenceEqual(_presentNums[0]))
                 {
-                    for (var y = 0; y < newGrid.Height - 2; y++)
+                    validGrids++;
+                    break;
+                }
+                
+                // Place new package in queue
+                var validPackageIndices = activePackageNums
+                    .Zip(_presentNums[0], (a, t) => t - a)
+                    .Select((diff, i) => i)
+                    .Where(i => _presentNums[0][i] - activePackageNums[i] > 0)
+                    .ToList();
+
+                foreach (var validPackage in validPackageIndices)
+                {
+                    for (var x = 0; x < newGrid.Width - 2; x++)
                     {
-                        if (!CanPlacePackage(newGrid, validPackage, x, y)) continue;
-                        // Package can be placed
-                        var score = TouchScore(newGrid, validPackage, x, y); // Lower score = better
-                        pq.Enqueue((newGrid, validPackage, x, y, activePackageNums), score);
+                        for (var y = 0; y < newGrid.Height - 2; y++)
+                        {
+                            var (canPlace, packages) = CanPlacePackage(newGrid, validPackage, x, y);
+                            
+                            if (!canPlace) continue;
+                            // Package can be placed
+                            foreach (var package in packages)
+                            {
+                                var score = TouchScore(newGrid, package, x, y); // Lower score = better
+                                pq.Enqueue((newGrid, package, validPackage, x, y, newPackageNums), score);
+                            }
+                        }
                     }
                 }
             }
         }
+        
         
         Console.WriteLine(validGrids);
     }
@@ -216,15 +229,13 @@ public class Program
         Console.WriteLine(_presents.Count);
     }
     
-    static int TouchScore(BitGrid grid, int package, int x, int y)
+    static int TouchScore(BitGrid grid, BitGrid package, int x, int y)
     {
-        var packageBits = _presents[package];
-
         int touches = 0;
 
-        for (int i = 0; i < packageBits.Height; i++)
+        for (int i = 0; i < package.Height; i++)
         {
-            ulong row = packageBits.Rows[i] << x;
+            ulong row = package.Rows[i] << x;
             if (y + i == 0 || (grid.Rows[y + i - 1] & row) != 0)
                 touches++;
         }
@@ -232,10 +243,12 @@ public class Program
         return -touches; // more touches = better
     }
 
-    static bool CanPlacePackage(BitGrid grid, int package, int x, int y)
+    static (bool, List<BitGrid>) CanPlacePackage(BitGrid grid, int package, int x, int y)
     {
         var packageBits = _presents[package];
         var permuts = _permutations[packageBits];
+        var validPerms = new List<BitGrid>();
+
         foreach (var perm in permuts)
         {
             bool canPlace = true;
@@ -249,15 +262,13 @@ public class Program
                 }
             }
             if (canPlace)
-                return true; // found a valid permutation
+                validPerms.Add(perm);
         }
-        return false;
+        return (validPerms.Count > 0, validPerms);
     }
     
-    static BitGrid PlacePackage(BitGrid grid, int package, int x, int y)
+    static BitGrid PlacePackage(BitGrid grid, BitGrid package, int x, int y)
     {
-        var packageBits = _presents[package];
-        // Deep copy of the grid
         var newGrid = new BitGrid
         {
             Width  = grid.Width,
@@ -265,9 +276,9 @@ public class Program
             Rows   = (ulong[])grid.Rows.Clone()
         };
         
-        for (int i = 0; i < packageBits.Height; i++)
+        for (int i = 0; i < package.Height; i++)
         {
-            newGrid.Rows[y + i] |= (packageBits.Rows[i] << x);
+            newGrid.Rows[y + i] |= (package.Rows[i] << x);
         }
         return newGrid;
     }
