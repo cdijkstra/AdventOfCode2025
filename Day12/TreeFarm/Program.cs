@@ -93,14 +93,8 @@ public class Program
                     .ForEach(package => pq.Enqueue((grid, package, packageNum, 0, 0, packageNums), 0));
             }
             
-            var triedSets = 0;
             while (pq.Count > 0)
             {
-                if (triedSets++ == 100000)
-                {
-                    break;
-                }
-                
                 var (activeGrid, activePackage, packageNum, activeX, activeY, activePackageNums) = pq.Dequeue();
                 var newGrid = PlacePackage(activeGrid, activePackage, activeX, activeY);
                 var newPackageNums = new List<int>(activePackageNums);
@@ -135,6 +129,9 @@ public class Program
                     .Zip(_presentNums[gridIdx], (a, t) => t - a)
                     .Sum();
                 
+                var validPositions = CountValid3X3Areas(newGrid); // max amount of packages that can be placed in grid
+                if (validPositions < packagesNeeded) continue;
+                
                 foreach (var validPackage in validPackageIndices)
                 {
                     (int maxX, int maxY) = GetMaxSetBitPosition(newGrid);
@@ -142,6 +139,8 @@ public class Program
                     {
                         for (var y = 0; y <= Math.Min(maxY, newGrid.Height - PresentHeight); y++)
                         {
+                            if (BitSet(newGrid, x, y)) continue;
+                            
                             var (canPlace, packages) = CanPlacePackage(newGrid, validPackage.Index, x, y);
                             
                             if (!canPlace) continue;
@@ -152,8 +151,7 @@ public class Program
                                 if (!IsAdjacentToSetBits(newGrid, package, x, y))
                                     continue;
 
-                                var score = packagesNeeded; // Lower score when there's fewer packages left
-                                pq.Enqueue((newGrid, package, validPackage.Index, x, y, newPackageNums), score);
+                                var score = packagesNeeded * 1000 - validPositions;                                pq.Enqueue((newGrid, package, validPackage.Index, x, y, newPackageNums), score);
                             }
                         }
                     }
@@ -163,6 +161,45 @@ public class Program
         
         return validGrids;
     }
+    
+    private static int CountValid3X3Areas(BitGrid grid)
+    {
+        int count = 0;
+        for (int y = 0; y <= grid.Height - 3; y++)
+        {
+            for (int x = 0; x <= grid.Width - 3; x++)
+            {
+                bool valid = true;
+                // Check each row in the 3x3 window
+                for (int dy = 0; dy < 3 && valid; dy++)
+                {
+                    ulong row = (grid.Rows[y + dy] >> x) & 0b111UL;
+                    if (row == 0b111UL) // All bits set in this row
+                        valid = false;
+                }
+                // Check each column in the 3x3 window
+                for (int dx = 0; dx < 3 && valid; dx++)
+                {
+                    bool allSet = true;
+                    for (int dy = 0; dy < 3; dy++)
+                    {
+                        if (((grid.Rows[y + dy] >> (x + dx)) & 1UL) == 0)
+                        {
+                            allSet = false;
+                            break;
+                        }
+                    }
+                    if (allSet)
+                        valid = false;
+                }
+                if (valid)
+                    count++;
+            }
+        }
+        return count;
+    }
+
+    private static bool BitSet(BitGrid grid, int x, int y) => ((grid.Rows[y] >> x) & 1UL) != 0;
     
     // Returns (maxX, maxY) for set bits in the grid
     private static (int maxX, int maxY) GetMaxSetBitPosition(BitGrid grid)
