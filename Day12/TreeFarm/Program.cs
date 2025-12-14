@@ -34,6 +34,9 @@ public class Program
     private static List<BitGrid> _presents = new();
     private static List<List<int>> _presentNums = new();
     private static List<BitGrid> _grids = new();
+    private static int PresentWidth = 3;
+    private static int PresentHeight = 3;
+    
     static void Main()
     {
         ReadFile("testdata.txt");
@@ -101,9 +104,9 @@ public class Program
 
                 foreach (var validPackage in validPackageIndices)
                 {
-                    for (var x = 0; x < newGrid.Width - 2; x++)
+                    for (var x = 0; x <= newGrid.Width - PresentWidth; x++)
                     {
-                        for (var y = 0; y < newGrid.Height - 2; y++)
+                        for (var y = 0; y <= newGrid.Height - PresentHeight; y++)
                         {
                             var (canPlace, packages) = CanPlacePackage(newGrid, validPackage, x, y);
                             
@@ -111,6 +114,10 @@ public class Program
                             // Package can be placed
                             foreach (var package in packages)
                             {
+                                // Only add if adjacent to set bits, or if this is the first present
+                                if (CountSetBits(newGrid.Rows) > 0 && !IsAdjacentToSetBits(newGrid, package, x, y))
+                                    continue;
+                                
                                 var score = TouchScore(newGrid, package, x, y); // Lower score = better
                                 pq.Enqueue((newGrid, package, validPackage, x, y, newPackageNums), score);
                             }
@@ -121,6 +128,27 @@ public class Program
         }
         
         Console.WriteLine(validGrids);
+    }
+    
+    // Returns true if any set bit in 'package' at (x, y) touches a set bit in 'grid'
+    static bool IsAdjacentToSetBits(BitGrid grid, BitGrid package, int x, int y)
+    {
+        for (int i = 0; i < package.Height; i++)
+        {
+            ulong row = package.Rows[i] << x;
+            int gridY = y + i;
+            if (gridY < 0 || gridY >= grid.Height) continue;
+
+            // Check above
+            if (gridY > 0 && ((row & grid.Rows[gridY - 1]) != 0)) return true;
+            // Check below
+            if (gridY < grid.Height - 1 && ((row & grid.Rows[gridY + 1]) != 0)) return true;
+            // Check left/right
+            ulong left = (row >> 1) & ~0UL;
+            ulong right = (row << 1) & ~0UL;
+            if (((left | right) & grid.Rows[gridY]) != 0) return true;
+        }
+        return false;
     }
 
     private static int CountSetBits(ulong[] rows)
