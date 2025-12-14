@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 public class BitGrid
@@ -34,23 +35,30 @@ public class Program
     private static List<BitGrid> _presents = new();
     private static List<List<int>> _presentNums = new();
     private static List<BitGrid> _grids = new();
-    private static int PresentWidth = 3;
-    private static int PresentHeight = 3;
+    private static readonly int PresentWidth = 3;
+    private static readonly int PresentHeight = 3;
     
     static void Main()
     {
+        var sw = new Stopwatch();
+        sw.Start();
         ReadFile("testdata.txt");
-        SolvePart1();
+        Debug.Assert(SolvePart1() == 2);
         // ReadFile("data.txt");
-        // SolvePart1();
+        // Console.WriteLine(SolvePart1());
+        sw.Stop();
+        Console.WriteLine($"Test passed in {sw.ElapsedMilliseconds} ms");
     }
 
-    private static void SolvePart1()
+    private static int SolvePart1()
     {
         var validGrids = 0;
 
         for (var gridIdx = 0; gridIdx < 3; gridIdx++)
         {
+            var visited = new HashSet<string>();
+            
+            Console.WriteLine($"Considering idx {gridIdx}");
             var grid = _grids[gridIdx];
             var packageNums = Enumerable.Repeat(0, _presentNums[gridIdx].Count).ToList();
             var considerIndices = _presentNums[gridIdx]
@@ -73,6 +81,14 @@ public class Program
                 var newGrid = PlacePackage(activeGrid, activePackage, activeX, activeY);
                 var newPackageNums = new List<int>(activePackageNums);
                 newPackageNums[packageNum]++;
+                
+                var stateKey = string.Join(",", newGrid.Rows) + "|" + string.Join(",", newPackageNums);
+                if (visited.Contains(stateKey))
+                {
+                    continue;
+                }
+                visited.Add(stateKey);
+                
                 if (newPackageNums.SequenceEqual(_presentNums[gridIdx]))
                 {
                     Console.WriteLine($"Found a valid grid for {gridIdx}");
@@ -84,14 +100,11 @@ public class Program
                     .Zip(_presentNums[gridIdx], (a, t) => t - a)
                     .ToList();
                 
+                // Check if there are enough spaces left in the grid
                 var spacesAvailable = newGrid.Height * newGrid.Width - CountSetBits(newGrid.Rows);
-                
-                var spacesNeeded = 0;
-                for(var idx = 0; idx != placePackages.Count; idx++)
-                {
-                    if (placePackages[idx] == 0) continue;
-                    spacesNeeded += CountSetBits(_presents[idx].Rows);
-                }
+                var spacesNeeded = placePackages
+                    .Select((count, idx) => count > 0 ? CountSetBits(_presents[idx].Rows) : 0)
+                    .Sum();
                 if (spacesNeeded > spacesAvailable) continue;
                 
                 
@@ -100,26 +113,30 @@ public class Program
                     .Zip(_presentNums[gridIdx], (a, t) => t - a)
                     .Select((diff, i) => i)
                     .Where(i => _presentNums[gridIdx][i] - activePackageNums[i] > 0)
+                    .Select(i => (Index: i, Package: _presents[i]))
                     .ToList();
-
+                
                 foreach (var validPackage in validPackageIndices)
                 {
-                    for (var x = 0; x <= newGrid.Width - PresentWidth; x++)
+                    // (int maxX, int maxY) = GetMaxSetBitPosition(newGrid);
+                    var candidates = GetUnsetAdjacentToSetBits(newGrid.Rows, newGrid.Width);
+                    
+                    for (var x = 0; x <= Math.Min(maxX, newGrid.Width - PresentWidth); x++)
                     {
-                        for (var y = 0; y <= newGrid.Height - PresentHeight; y++)
+                        for (var y = 0; y <= Math.Min(maxY, newGrid.Height - PresentHeight); y++)
                         {
-                            var (canPlace, packages) = CanPlacePackage(newGrid, validPackage, x, y);
+                            var (canPlace, packages) = CanPlacePackage(newGrid, validPackage.Index, x, y);
                             
                             if (!canPlace) continue;
                             // Package can be placed
                             foreach (var package in packages)
                             {
                                 // Only add if adjacent to set bits, or if this is the first present
-                                if (CountSetBits(newGrid.Rows) > 0 && !IsAdjacentToSetBits(newGrid, package, x, y))
+                                if (!IsAdjacentToSetBits(newGrid, package, x, y))
                                     continue;
-                                
-                                var score = TouchScore(newGrid, package, x, y); // Lower score = better
-                                pq.Enqueue((newGrid, package, validPackage, x, y, newPackageNums), score);
+
+                                var score = spacesNeeded - spacesAvailable; // Lower score when there's more options to fit everything
+                                pq.Enqueue((newGrid, package, validPackage.Index, x, y, newPackageNums), score);
                             }
                         }
                     }
@@ -127,7 +144,51 @@ public class Program
             }
         }
         
-        Console.WriteLine(validGrids);
+        return validGrids;
+    }
+    
+    private static List<(int x, int y)> GetUnsetAdjacentToSetBits(ulong[] rows, int width)
+    {
+        var result = new HashSet<(int x, int y)>();
+        int height = rows.Length;
+
+        for (int y = 0; y < height; y++)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                if (((rows[y] >> x) & 1UL) == 1)
+                {
+                    // Check 4 neighbors
+                    foreach (var (dx, dy) in new[] { (0, -1), (0, 1), (-1, 0), (1, 0) })
+                    {
+                        int nx = x + dx, ny = y + dy;
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height)
+                        {
+                            if (((rows[ny] >> nx) & 1UL) == 0)
+                                result.Add((nx, ny));
+                        }
+                    }
+                }
+            }
+        }
+        return new List<(int x, int y)>(result);
+    }
+    
+    private static (int maxX, int maxY) GetMaxSetBitPosition(BitGrid grid)
+    {
+        int maxX = -1;
+        int maxY = -1;
+        for (int y = 0; y < grid.Rows.Length; y++)
+        {
+            ulong row = grid.Rows[y];
+            if (row != 0)
+            {
+                int rowMaxX = BitOperations.Log2(row);
+                if (rowMaxX > maxX) maxX = rowMaxX;
+                maxY = y;
+            }
+        }
+        return (maxX, maxY);
     }
     
     // Returns true if any set bit in 'package' at (x, y) touches a set bit in 'grid'
@@ -326,6 +387,7 @@ public class Program
             if (canPlace)
                 validPerms.Add(perm);
         }
+
         return (validPerms.Count > 0, validPerms);
     }
     
