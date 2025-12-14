@@ -235,16 +235,23 @@ public class Program
     static bool CanPlacePackage(BitGrid grid, int package, int x, int y)
     {
         var packageBits = _presents[package];
-
-        for (int i = 0; i < packageBits.Height; i++)
+        var permuts = _permutations[packageBits];
+        foreach (var perm in permuts)
         {
-            ulong shiftedPackageRow = packageBits.Rows[i] << x;
-
-            if ((grid.Rows[y + i] & shiftedPackageRow) != 0)
-                return false; // collision found
+            bool canPlace = true;
+            for (int i = 0; i < perm.Height; i++)
+            {
+                ulong shiftedPackageRow = perm.Rows[i] << x;
+                if ((grid.Rows[y + i] & shiftedPackageRow) != 0)
+                {
+                    canPlace = false;
+                    break;
+                }
+            }
+            if (canPlace)
+                return true; // found a valid permutation
         }
-
-        return true; // space is free
+        return false;
     }
     
     static BitGrid PlacePackage(BitGrid grid, int package, int x, int y)
